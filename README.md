@@ -11,14 +11,14 @@ It came out of one real tune-up on a triple-screen GT3 rig (RTX 4070, i7-14700F)
 - An agent harness that supports the [Agent Skills](https://agentskills.io) format (`SKILL.md`): Claude Code, Claude Desktop, and others that read `SKILL.md` folders
 - Optional: HWiNFO64 (`winget install --id REALiX.HWiNFO -e`)
 
-NVIDIA on flat screens is measured. AMD and VR guidance is included but comes from general knowledge, and the skill says so when it applies.
+NVIDIA on flat screens is measured. AMD and VR guidance is included but comes from general knowledge, and the skill says so when it applies. The skill also expects the agent to have web search: driver versions, vendor-app menus, monitor spec sheets and VR headset specifics are looked up live rather than recalled, because they change faster than any model's training data.
 
 ## Install
 
 **Claude Code / Claude Desktop (personal skills folder):**
 
 ```powershell
-git clone https://github.com/<you>/iracing-pc-performance-tuneup "$env:USERPROFILE\.claude\skills\iracing-pc-performance-tuneup"
+git clone https://github.com/andymiller-og/iracing-pc-performance-tuneup "$env:USERPROFILE\.claude\skills\iracing-pc-performance-tuneup"
 ```
 
 Then in a new Claude Code session type `/iracing-pc-performance-tuneup` or just ask "help me tune my iRacing graphics settings". To update later, `git pull` in that folder.

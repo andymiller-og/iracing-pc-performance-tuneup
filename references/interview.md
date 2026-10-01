@@ -7,6 +7,7 @@ Ask these in **one message** (or one AskUserQuestion with several questions if t
 - Official, league, or hosted; night racing or not.
 - Rain: never, occasionally, regularly. (Decides whether rain gets its own baseline and whether particle settings matter.)
 - Display setup: single, ultrawide, triples, VR. If triples: monitor model, and ask them to **measure eye-to-centre-screen distance** now; it is the one geometry input that cannot be looked up.
+- If VR: headset model, how it connects (DisplayPort native, USB link cable, Wi-Fi via Air Link / Virtual Desktop / Steam Link / ALVR, or another streaming app), which runtime (Meta, SteamVR, Virtual Desktop, Pimax Play, Varjo, WMR), target refresh, and any extra layers (OpenXR Toolkit, foveated rendering). These decide the frame budget, where resolution is set and what to research; see references/vr.md.
 
 ## 2. What they want (shapes every trade)
 - Priority on a 1–5 scale from "max frame rate" to "best image", or in their words.
@@ -30,7 +31,7 @@ Write them to the tune-up log as the "Driver profile" section before doing anyth
 > Before I touch anything I need to know how you race and what you care about, so every change can be judged against it. A few quick ones:
 > 1. What do you mostly run, and how big are the grids? (e.g. "GT3 officials, 30–40 cars")
 > 2. Rain: never / sometimes / often? Night: yes / no?
-> 3. Screens: single / ultrawide / triples / VR? If triples, the monitor model, and please measure from your eye to the centre of the middle screen in your seat.
+> 3. Screens: single / ultrawide / triples / VR? If triples, the monitor model, and please measure from your eye to the centre of the middle screen in your seat. If VR, which headset, how it connects (cable, Wi-Fi via Virtual Desktop/Air Link, DisplayPort), which runtime, and what refresh you run.
 > 4. On a scale from "frame rate above all" to "make it beautiful", where are you?
 > 5. What must not get worse? (distant cars, mirrors, cockpit text, shadows…)
 > 6. What are you happy to give up? (crowds, grandstands, pit objects…)

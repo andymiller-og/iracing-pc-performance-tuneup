@@ -17,6 +17,18 @@ Everything you do should be traceable to two things: a line in the driver's prof
 - Never silently change a security setting (Memory Integrity), the registry, or a driver. Explain the trade and have the user do it, or do it only with their explicit yes.
 - Don't edit the sim's ini files. The sim rewrites them, and the user needs to learn where the setting lives in the UI. Read them to verify; change through the sim's Options.
 
+## Research in real time
+
+The scripts and references give you the method and the measurements. They do not give you this month's driver version, the current layout of the NVIDIA app or Adrenalin, the spec sheet of the user's monitor, or the quirks of their particular VR headset and link. Use web search for those whenever it is available, and say in your reply which facts came from a search. Search at these points as a matter of course:
+
+- **Phase 2**: the monitor model's outer width, bezel and curve radius; the current driver release for the user's GPU vendor versus what is installed; whether the installed iRacing build has known performance issues or new settings (search "iRacing <season> release notes graphics").
+- **Phase 4**: before naming where a setting lives in a vendor app; before recommending a Windows change (confirm the current fix still applies to the user's Windows build).
+- **VR**: the specific headset + connection + runtime combination, for current recommended render resolution, refresh, encode settings and known iRacing issues. VR advice without this research is generic and probably wrong for their headset.
+- **AMD**: the Adrenalin equivalents of each NVIDIA step, since the AMD reference is not measured.
+- **Hardware questions**: PSU connector layouts, GPU power requirements and case fit, if the user asks about upgrades.
+
+Prefer manufacturer pages and release notes over forum summaries, check dates, and never quote a version number or menu path from memory when a search is available.
+
 ## The workflow
 
 Keep a todo list with these phases if the harness has one. Append to the log (`Documents\iRacing-tuneup\tuneup-log.md`) at the end of every phase; the structure is in `references/report-template.md`.
@@ -27,7 +39,7 @@ Run `scripts/Test-Prerequisites.ps1`. It finds the sim, the settings folder (One
 
 ### Phase 1: Interview
 
-Read `references/interview.md` and ask the questions in one message. You need: what they race and grid size, rain and night frequency, display setup and monitor model, measured eye-to-screen distance for triples, where they sit on the frame-rate-versus-image scale, what they refuse to lose, what they will sacrifice, whether Windows security trade-offs are acceptable, whether they can run an offline AI race, overlays they use, and any specific problem. Record the answers as the "Driver profile" in the log. Everything downstream is judged against this.
+Read `references/interview.md` and ask the questions in one message. You need: what they race and grid size, rain and night frequency, display setup and monitor model, measured eye-to-screen distance for triples, for VR the headset, connection method, runtime and refresh, where they sit on the frame-rate-versus-image scale, what they refuse to lose, what they will sacrifice, whether Windows security trade-offs are acceptable, whether they can run an offline AI race, overlays they use, and any specific problem. Record the answers as the "Driver profile" in the log. Everything downstream is judged against this.
 
 ### Phase 2: Read the machine and the sim
 
