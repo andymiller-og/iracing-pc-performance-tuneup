@@ -1,0 +1,122 @@
+---
+name: iracing-pc-performance-tuneup
+description: Measure-first graphics and performance tune-up for iRacing on Windows (triples, single screen, ultrawide, VR; NVIDIA measured, AMD and VR from general knowledge). Use this whenever someone wants better or smoother frame rates in iRacing, asks whether their CPU, GPU, RAM or thermals are the bottleneck, wants to fix stutter, tearing or flicker in the sim, wants their triple-screen field of view or monitor geometry set up correctly, wants to know which iRacing graphics settings to change for their hardware, or asks whether a GPU or PSU upgrade would help their sim rig. Also use it when a user shares PresentMon captures, HWiNFO reports or iRacing ini files and asks what they mean. Reads the sim's own settings files and system facts from the PC, so no screenshots are needed; drives Intel PresentMon captures of a repeatable AI race; applies changes in approved batches with a measurement after each; and writes a running log and a final report including what was deliberately not changed.
+---
+
+# iRacing PC performance tune-up
+
+You are helping a sim racer get the frame rate and image quality they want from iRacing, on their hardware, with evidence. The method is simple and the order matters: find out how they race and what they value, read the machine and the sim's settings yourself, measure a repeatable worst case, decide what is limiting, change a few things, measure again, keep what works, and write it all down. A tune-up without measurement is guessing with extra steps, and most "optimisation guides" are guessing.
+
+Everything you do should be traceable to two things: a line in the driver's profile ("you said you never race in rain") and a number from a capture ("the GPU idled 3.8 ms of every frame"). When you cannot measure something, say that it is inferred.
+
+## Scope and honesty
+
+- **Windows only.** The scripts are PowerShell 5.1 compatible.
+- **NVIDIA on flat screens is measured** (see `references/worked-example.md`). **AMD and VR guidance is from general knowledge**; tell the user that plainly when it applies and read `references/amd.md` or `references/vr.md`.
+- Vendor apps and drivers change faster than any model's training data. Before telling a user where a setting lives in the NVIDIA app or Adrenalin, or what the current driver version is, verify with a web search if one is available. `references/nvidia.md` reflects the NVIDIA app 11.x layout as of late 2026.
+- Never silently change a security setting (Memory Integrity), the registry, or a driver. Explain the trade and have the user do it, or do it only with their explicit yes.
+- Don't edit the sim's ini files. The sim rewrites them, and the user needs to learn where the setting lives in the UI. Read them to verify; change through the sim's Options.
+
+## The workflow
+
+Keep a todo list with these phases if the harness has one. Append to the log (`Documents\iRacing-tuneup\tuneup-log.md`) at the end of every phase; the structure is in `references/report-template.md`.
+
+### Phase 0: Preflight
+
+Run `scripts/Test-Prerequisites.ps1`. It finds the sim, the settings folder (OneDrive-redirected Documents handled), Intel PresentMon, HWiNFO (optional), the GPU vendor and whether the sim is running. Anything MISSING comes with a winget command. PresentMon is required: without per-frame CPU and GPU timing there is no diagnosis, only opinion. Ask before installing anything.
+
+### Phase 1: Interview
+
+Read `references/interview.md` and ask the questions in one message. You need: what they race and grid size, rain and night frequency, display setup and monitor model, measured eye-to-screen distance for triples, where they sit on the frame-rate-versus-image scale, what they refuse to lose, what they will sacrifice, whether Windows security trade-offs are acceptable, whether they can run an offline AI race, overlays they use, and any specific problem. Record the answers as the "Driver profile" in the log. Everything downstream is judged against this.
+
+### Phase 2: Read the machine and the sim
+
+Run, and read the output of:
+- `scripts/Get-SystemSnapshot.ps1` — CPU, RAM speed and channels, GPU and driver, power limit and throttle reasons (NVIDIA), monitors from EDID, power mode, Memory Integrity, multi-plane overlay state, PSU if the firmware reports it, background CPU and GPU-memory consumers.
+- `scripts/Find-IRacingConfig.ps1` — every performance-relevant setting in the sim's own UI words, Driving and Replays side by side, the monitor geometry, and heuristic anomalies.
+
+Then read `references/settings-reference.md` so you know what each setting costs (CPU, GPU or VRAM) and buys. For triples, read `references/monitor-geometry.md` and look up the monitor's outer width and bezel from its spec sheet; the EDID name may differ from the retail name, so confirm the model with the user.
+
+If the user already has an HWiNFO report or captures, read them, but know their limits: a static HWiNFO "report" is inventory and tells you nothing about load. The earlier attempt in the worked example called the bottleneck wrong from inventory alone.
+
+Report what you found in a short list: anything wrong (geometry typos, clamped FOV, old driver, cap above refresh, cars not drawn, security features that cost CPU), anything fine that the user might have worried about, and what you could not determine (PSU wattage is the classic one: ask for the label or order sheet, don't infer it from the GPU).
+
+### Phase 3: Baseline
+
+Design one repeatable scenario from the driver profile: an offline AI race at a track they own, with the grid size they usually race, in the conditions they usually race, captured from just before the lights through one full lap. If they race in rain regularly, that is a second scenario, not a replacement for the dry one. A race start with a full field in the cockpit is the load that matters; a replay is not a substitute (see `references/diagnosis.md`, "What was captured matters").
+
+Capture: `scripts/Capture-PresentMon.ps1 -Label baseline-dry` (timed mode with a countdown, or `-Hotkey` for manual start/stop). It self-elevates. While the sim is still in the session, run `scripts/Read-IRacingSession.ps1` to record exactly what was captured (track, car count, weather, replay vs live) and, if VRAM is a suspect, `scripts/Get-GpuMemoryByProcess.ps1`.
+
+Analyse: `scripts/Analyze-PresentMon.ps1 -Path <csv> -PowerLimitW <nvidia-smi power.limit>` and read it with `references/diagnosis.md`. Decide: CPU-bound (render thread), GPU-bound and compute-limited, GPU-bound and memory-stalled, or balanced. State the verdict with the numbers that support it and what rules the alternatives out. If the capture does not support a clean verdict (too short, replay, mostly menus), say so and re-capture rather than reasoning past it.
+
+### Phase 4: Plan the batches
+
+Write batches of three or four changes, each change with: the exact page and setting name as the sim shows it, the value to set, why (tied to the verdict and the profile), and the expected effect. Order by the verdict:
+
+- **CPU-bound**: first SMP on NVIDIA triples (test it alone, it is the one change that can misbehave), then cars drawn, world objects, shadow passes, Windows items. Spend the GPU's idle time on anti-aliasing, sharpening and sky for free.
+- **GPU-bound, compute**: particles full-res off, shader quality, resolution scaling as a last resort; spend the CPU's idle time on cars drawn for nearly free.
+- **GPU-bound, memory**: free VRAM (overlays, browser windows, vendor overlay), lower texture settings, then as above. Confirm with per-process memory during a session.
+- **Balanced**: every change costs; choose by the profile.
+
+Always start with a geometry batch for triples if the geometry is wrong, because it changes how much of the world is drawn. Put a frame cap 3–5 below the panel refresh in an early batch when VRR is available. Keep the Dynamic LOD threshold below the user's running 1% low; above it, the sim strips detail every lap and the user reports it "looks worse".
+
+Present the plan and wait for approval. The user may reorder, strike or add items; record what they decided.
+
+### Phase 5: Apply, verify, measure, decide
+
+For each approved batch:
+1. Walk the user through the changes in the sim's UI, one page at a time, in plain words. Don't assume they know where things are.
+2. After they leave the Options screen or close the sim, re-run `scripts/Find-IRacingConfig.ps1` and confirm each value landed. Settings that didn't save are common and quietly ruin a comparison.
+3. Re-capture the same scenario with a batch label. Analyse. Compare against the previous capture: average, 1% low, 0.1% low, the limiter split, GPU power and VRAM.
+4. Ask what it looked and felt like. Their eyes are a measurement too; "edges around the dash" after a batch is a real result.
+5. Decide per item: keep, or revert with a reason. Write the batch section in the log before moving on.
+
+Test the single risky change alone when a batch contains one (SMP, G-SYNC on non-validated panels, resolution scaling). Several changes landing together can't be attributed afterwards; the worked example couldn't separate SMP from the Windows changes for exactly that reason.
+
+Stop adding batches when the limiter is the hardware with no headroom on either side, or when the user is satisfied. Then say so plainly, including what a hardware change would need to be and what stands in its way (power supply, case, connectors) if they ask.
+
+### Phase 6: Report
+
+Write the final report from the log using `references/report-template.md`: outcome table first, the verdict and whether it changed, changes ranked by measured impact, what was tried and reverted, what was deliberately not changed and why, the hardware ceiling, open items, and the final settings as a backup. Offer a short shareable version if they want to post it.
+
+## Traps this skill exists to avoid
+
+Read `references/worked-example.md` once; it is a complete run with its mistakes left in. The short list:
+
+- Calling the bottleneck from an inventory report or a utilisation percentage. Per-frame busy/wait is the evidence.
+- Benchmarking a replay. Replays use the Replays settings column and TV cameras; they are good for like-for-like comparisons and useless as a driving fps estimate.
+- Trusting MsCPUBusy with Reflex on. Reflex makes it track GPU time; use GPUWait and the GPU-bound frame count.
+- A Dynamic LOD threshold above the running fps.
+- Reading settings from the ini while the sim still has the options screen open, then concluding a change "did nothing".
+- Inferring the PSU from the GPU. Ask for the label.
+- Telling the user where a setting is in a vendor app from memory. The NVIDIA Control Panel no longer exists; the NVIDIA app's layout changed in 2026.
+- Applying a security trade-off (Memory Integrity) as if it were a graphics setting.
+- Forgetting that VRAM "full" stays full after you free memory, because the sim grows into it; look at GPU power and the lows instead.
+
+## Scripts
+
+| Script | Purpose | When |
+|---|---|---|
+| `Test-Prerequisites.ps1` | find sim, settings, PresentMon, HWiNFO, GPU vendor | Phase 0 |
+| `Get-SystemSnapshot.ps1 [-SampleSeconds n]` | hardware and Windows facts, background load, GPU memory by process | Phase 2, and again if the limiter is unclear |
+| `Find-IRacingConfig.ps1 [-Raw] [-Path]` | settings in UI words, geometry, anomalies | Phase 2, after every batch |
+| `Capture-PresentMon.ps1 -Label x [-Seconds n] [-Delay n] [-Hotkey]` | elevated PresentMon capture of the sim | Phase 3 and 5 |
+| `Analyze-PresentMon.ps1 -Path csv [-PowerLimitW n] [-Json]` | fps, lows, limiter split, power, VRAM, time series | after every capture |
+| `Read-IRacingSession.ps1` | what the sim has loaded; live fps/CPU/GPU meters | during every capture session |
+| `Get-GpuMemoryByProcess.ps1` | who holds VRAM | when GPU-bound with low power |
+
+Run them with `powershell -NoProfile -ExecutionPolicy Bypass -File <script>`. They are read-only except Capture, which writes a CSV.
+
+## References
+
+| File | Read when |
+|---|---|
+| `references/interview.md` | Phase 1 |
+| `references/settings-reference.md` | Phase 2 and 4: cost and effect of every setting |
+| `references/monitor-geometry.md` | any triple or curved setup |
+| `references/diagnosis.md` | every capture |
+| `references/nvidia.md` | NVIDIA rigs: SMP, G-SYNC on non-validated panels, NVIDIA app, flicker fixes |
+| `references/amd.md` | AMD rigs (general knowledge; say so) |
+| `references/vr.md` | VR rigs (general knowledge; say so) |
+| `references/report-template.md` | Phase 6 and the running log |
+| `references/worked-example.md` | once, before the first plan |

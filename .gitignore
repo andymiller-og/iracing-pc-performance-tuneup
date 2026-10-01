@@ -1,0 +1,8 @@
+# local eval workspaces and captures never belong in the repo
+*-workspace/
+evals/results/
+*.csv
+*.skill
+__pycache__/
+.DS_Store
+Thumbs.db

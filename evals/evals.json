@@ -1,0 +1,22 @@
+{
+  "skill_name": "iracing-pc-performance-tuneup",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "I've attached a PresentMon capture of iRacing from a 40-car replay and my rendererDX11Monitor.ini and app.ini. I run triples (3x 32\" 1440p 165Hz curved) on an RTX 4070 and i7-14700F, mostly 30-40 car GT3 races, dry. I want higher and smoother fps without the sim looking worse, and I don't want to lose distant car visibility or readable mirrors. Tell me what the bottleneck is and what in the data shows it, flag anything wrong in my settings, and give me the first two batches of changes with exact pages and expected gains. Say what you're least sure about.",
+      "expected_output": "Verdict: CPU-bound render thread (CPUBusy ~= frame time, GPUWait ~3.8 ms, GPU 67%, power well under 200 W). Caveat that the capture is a replay, not driving. Flags: viewing distance 52 mm / FOV 179 clamp, monitor width 609 mm for a 31.5\" panel, radius 1000 vs 1500R, cap 232 on 165 Hz, no AA, Draw Cars 20/8, SMP off with 3 projections. Batch 1 = geometry; batch 2 = SMP tested alone (+ Windows items), with SMAA etc. as free GPU-side spend. Least-confident list includes SMP artifacts and replay-vs-driving extrapolation.",
+      "files": ["eval-files/pmcap-replay-baseline.csv", "eval-files/rendererDX11Monitor.ini", "eval-files/app.ini"]
+    },
+    {
+      "id": 1,
+      "prompt": "Here's a PresentMon capture from a 39-AI race start at Spa in the rain on my rig (RTX 4070 12GB, triples 7680x1440). It felt fine but I want to know what's limiting it and what to change. Settings file attached. I rarely race in rain; most of my racing is dry 30-50 car fields and I care about it looking good.",
+      "expected_output": "Verdict: GPU-bound and memory-stalled (GPU ~98% but power ~163 W vs 200 W limit, VRAM 12.7 of 12.3-12.9 GB, GPUWait ~0). Reflex caveat for CPUBusy. Recommends particles Full Resolution Off first, freeing VRAM (overlays), and explicitly weighs that rain is rare for this user, so dry visuals stay the priority. Suggests a dry baseline before spending on visuals.",
+      "files": ["eval-files/pmcap-spa-rain.csv", "eval-files/rendererDX11Monitor-after-batch3.ini"]
+    },
+    {
+      "id": 2,
+      "prompt": "I just want to make sure my iRacing settings are sane on this PC before the season starts. Single 1440p 144Hz monitor, RTX 3070, Ryzen 5800X3D. I don't have any captures yet. What do you need from me and what's the first thing we do?",
+      "expected_output": "Does not guess settings. Runs/instructs preflight (PresentMon install), asks the interview questions in one message, proposes reading the config and system snapshot via the scripts, and proposes a baseline AI race capture matching the user's typical conditions before any changes. Mentions the single-screen FOV note and the cap-below-refresh item as likely early batch items but defers to measurement."
+    }
+  ]
+}

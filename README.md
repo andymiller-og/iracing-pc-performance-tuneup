@@ -1,0 +1,57 @@
+# iRacing PC performance tune-up (an agent skill)
+
+A measure-first tune-up for iRacing graphics and performance that an AI coding agent runs with you on your own PC. It reads your sim settings and hardware itself (no screenshots), interviews you about how you race and what you care about, drives Intel PresentMon captures of a repeatable AI race, tells you whether the CPU, GPU, memory or thermals are the limit and why, then changes settings in small approved batches with a measurement after each, and writes a report at the end, including what it deliberately didn't change.
+
+It came out of one real tune-up on a triple-screen GT3 rig (RTX 4070, i7-14700F) that went from a CPU-choked 94 fps to 127 fps on the same replay with better image quality, and the whole run with its mistakes is included as the worked example.
+
+## What it needs
+
+- Windows 10/11, iRacing installed, PowerShell (5.1 is fine)
+- [Intel PresentMon](https://game.intel.com/us/stories/intel-presentmon/) for per-frame CPU/GPU timing: `winget install --id Intel.PresentMon -e`
+- An agent harness that supports the [Agent Skills](https://agentskills.io) format (`SKILL.md`): Claude Code, Claude Desktop, and others that read `SKILL.md` folders
+- Optional: HWiNFO64 (`winget install --id REALiX.HWiNFO -e`)
+
+NVIDIA on flat screens is measured. AMD and VR guidance is included but comes from general knowledge, and the skill says so when it applies.
+
+## Install
+
+**Claude Code / Claude Desktop (personal skills folder):**
+
+```powershell
+git clone https://github.com/<you>/iracing-pc-performance-tuneup "$env:USERPROFILE\.claude\skills\iracing-pc-performance-tuneup"
+```
+
+Then in a new Claude Code session type `/iracing-pc-performance-tuneup` or just ask "help me tune my iRacing graphics settings". To update later, `git pull` in that folder.
+
+**Project-scoped instead:** clone into `<your-project>\.claude\skills\` instead of the user folder.
+
+**Any other harness:** point it at `SKILL.md`, or paste `PROMPT.md` (a single-prompt version that references the same scripts) into a session started in this folder.
+
+## What a run looks like
+
+1. **Preflight**: finds the sim, settings folder, PresentMon, GPU vendor; prints install commands for anything missing.
+2. **Interview**: eight questions about what you race, grid sizes, rain, screens, priorities, what you won't give up, and whether security trade-offs are OK.
+3. **Read the machine**: hardware, Windows power/security state, monitors, current sim settings in the sim's own words, plus anomalies (clamped FOV, cap above refresh, cars not drawn, old driver).
+4. **Baseline**: an offline AI race in your typical conditions, captured from the lights through a lap with PresentMon. The analysis says CPU-bound, GPU-bound (compute or memory) or balanced, with the numbers.
+5. **Batches**: three or four changes at a time, each with page, setting, value, why and expected gain. You approve, apply in the sim's UI, the skill verifies the values saved, re-captures, compares, and you keep or revert.
+6. **Report**: before/after tables, what changed, what was tried and reverted, what was left alone and why, the hardware ceiling, open items.
+
+## Running the scripts by hand
+
+All scripts are in `scripts/` and are read-only except the capture one.
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Prerequisites.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Get-SystemSnapshot.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Find-IRacingConfig.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Capture-PresentMon.ps1 -Label baseline-dry
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Analyze-PresentMon.ps1 -Path "$env:USERPROFILE\Documents\iRacing-tuneup\captures\<file>.csv" -PowerLimitW 200
+```
+
+## Contributing
+
+Measurements from other rigs are the most valuable contribution, especially AMD and VR. Open an issue with the `Analyze-PresentMon.ps1` output, the `Find-IRacingConfig.ps1` output and what you changed. Corrections to UI labels and vendor-app paths are welcome; those drift with every release.
+
+## License
+
+MIT. See LICENSE.
