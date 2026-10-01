@@ -1,6 +1,6 @@
 ---
 name: iracing-pc-performance-tuneup
-description: Measure-first graphics and performance tune-up for iRacing on Windows (triples, single screen, ultrawide, VR; NVIDIA measured, AMD and VR from general knowledge). Use this whenever someone wants better or smoother frame rates in iRacing, asks whether their CPU, GPU, RAM or thermals are the bottleneck, wants to fix stutter, tearing or flicker in the sim, wants their triple-screen field of view or monitor geometry set up correctly, wants to know which iRacing graphics settings to change for their hardware, or asks whether a GPU or PSU upgrade would help their sim rig. Also use it when a user shares PresentMon captures, HWiNFO reports or iRacing ini files and asks what they mean. Reads the sim's own settings files and system facts from the PC, so no screenshots are needed; drives Intel PresentMon captures of a repeatable AI race; applies changes in approved batches with a measurement after each; and writes a running log and a final report including what was deliberately not changed.
+description: Measure-first graphics and performance tune-up for iRacing on Windows (triples, single screen, ultrawide, VR; NVIDIA measured, AMD and VR from general knowledge), with a quick-check mode that reads the PC and the sim's settings and flags anything out of the ordinary without load testing. Use this whenever someone wants better or smoother frame rates in iRacing, wants a quick sanity check of their iRacing settings, asks whether their CPU, GPU, RAM or thermals are the bottleneck, wants to fix stutter, tearing or flicker in the sim, wants their triple-screen field of view or monitor geometry set up correctly, wants to know which iRacing graphics settings to change for their hardware, or asks whether a GPU or PSU upgrade would help their sim rig. Also use it when a user shares PresentMon captures, HWiNFO reports or iRacing ini files and asks what they mean. Reads the sim's own settings files and system facts from the PC, so no screenshots are needed; drives Intel PresentMon captures of a repeatable AI race; applies changes in approved batches with a measurement after each; and writes a running log and a final report including what was deliberately not changed.
 ---
 
 # iRacing PC performance tune-up
@@ -29,7 +29,19 @@ The scripts and references give you the method and the measurements. They do not
 
 Prefer manufacturer pages and release notes over forum summaries, check dates, and never quote a version number or menu path from memory when a search is available.
 
-## The workflow
+## Two modes
+
+**Quick check (light mode).** For someone who is already reasonably set up and wants to know whether anything looks out of the ordinary, without a load test. Use it when the user asks for a quick look, a sanity check, a "light" or "quick and dirty" pass, says they don't want to run captures, or is clearly short on time. It is Phases 0 to 2 plus a findings list, and it takes ten minutes:
+
+1. Run `scripts/Test-Prerequisites.ps1` (skip the PresentMon requirement; note whether it is installed for later).
+2. Ask only three things: what they race and typical grid size; screens (and monitor model if triples); whether they lean frame rate or image quality. Skip the rest of the interview.
+3. Run `scripts/Get-SystemSnapshot.ps1` and `scripts/Find-IRacingConfig.ps1`. Check the driver version against the current release with a search. For triples, check the geometry against the panel's spec sheet.
+4. Reply with three short lists: **Wrong** (things that are incorrect regardless of hardware: geometry typos, a clamped FOV, a frame cap above the panel refresh, Draw Cars below their grid size, no anti-aliasing with GPU headroom implied by their hardware class, an old driver, a Dynamic LOD threshold that is obviously above their running fps, VRR not enabled on panels that support it), **Fine** (what they may have worried about that is right), and **Can't tell without a capture** (which side is limiting, whether VRAM is full, whether rain costs them, whether SMP would help). Each "wrong" item gets the page, the value and one line of why; these are safe to apply without a capture because they are correctness fixes, not performance trades.
+5. Offer the full tune-up in one sentence and stop. Don't propose performance trades (resolution scaling, shader quality, shadow maps, Memory Integrity) in quick mode; without a measurement they are guesses, and the user asked for a check, not a project.
+
+**Full tune-up.** Everything below. Default when the user wants more frames, smoother frames, a diagnosis, or has captures to share.
+
+## The full workflow
 
 Keep a todo list with these phases if the harness has one. Append to the log (`Documents\iRacing-tuneup\tuneup-log.md`) at the end of every phase; the structure is in `references/report-template.md`.
 

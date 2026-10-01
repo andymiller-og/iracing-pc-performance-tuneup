@@ -41,7 +41,13 @@ Then start a new Claude Code session and type `/iracing-pc-performance-tuneup`, 
 
 **Any other harness:** point it at `SKILL.md`, or paste `PROMPT.md` (a single-prompt version that references the same scripts) into a session started in this folder.
 
-## What a run looks like
+## Two ways to use it
+
+**Quick check.** Ask for "a quick check of my iRacing settings". The agent reads your hardware and the sim's settings files, asks three questions, and tells you what is wrong (correctness fixes with page and value), what is fine, and what it can't judge without a capture. No load testing, about ten minutes. Good if you're already well set up.
+
+**Full tune-up.** Ask to improve frame rate or smoothness, or share captures. The six-phase process below.
+
+## What a full run looks like
 
 1. **Preflight**: finds the sim, settings folder, PresentMon, GPU vendor; prints install commands for anything missing.
 2. **Interview**: eight questions about what you race, grid sizes, rain, screens, priorities, what you won't give up, and whether security trade-offs are OK.
