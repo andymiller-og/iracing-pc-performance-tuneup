@@ -39,7 +39,7 @@ Run `scripts/Test-Prerequisites.ps1`. It finds the sim, the settings folder (One
 
 ### Phase 1: Interview
 
-Read `references/interview.md` and ask the questions in one message. You need: what they race and grid size, rain and night frequency, display setup and monitor model, measured eye-to-screen distance for triples, for VR the headset, connection method, runtime and refresh, where they sit on the frame-rate-versus-image scale, what they refuse to lose, what they will sacrifice, whether Windows security trade-offs are acceptable, whether they can run an offline AI race, overlays they use, and any specific problem. Record the answers as the "Driver profile" in the log. Everything downstream is judged against this.
+Read `references/interview.md` and ask the questions in one message. Keep that opening message short: a sentence on the method, the questions, and one sentence on what happens after they answer. Save the explanation of phases and the script output for when you have their answers; a 300-word opener gets answered, a 1,000-word one gets skimmed. Never paste script output from a machine that isn't the user's as an illustration; it reads as their data. You need: what they race and grid size, rain and night frequency, display setup and monitor model, measured eye-to-screen distance for triples, for VR the headset, connection method, runtime and refresh, where they sit on the frame-rate-versus-image scale, what they refuse to lose, what they will sacrifice, whether Windows security trade-offs are acceptable, whether they can run an offline AI race, overlays they use, and any specific problem. Record the answers as the "Driver profile" in the log. Everything downstream is judged against this.
 
 ### Phase 2: Read the machine and the sim
 
@@ -63,7 +63,7 @@ Analyse: `scripts/Analyze-PresentMon.ps1 -Path <csv> -PowerLimitW <nvidia-smi po
 
 ### Phase 4: Plan the batches
 
-Write batches of three or four changes, each change with: the exact page and setting name as the sim shows it, the value to set, why (tied to the verdict and the profile), and the expected effect. Order by the verdict:
+Write batches of three or four changes, each change with: the exact page and setting name as the sim shows it (`Find-IRacingConfig.ps1` prints both the UI name and the page; use those, never a bare ini key), the value to set, why (tied to the verdict and the profile), and the expected effect. A batch may be a single change when that change needs to be attributed on its own (SMP, VRR, resolution scaling); say so. When a value depends on something you don't have yet (the measured viewing distance, the monitor model), ask for it in the same message rather than leaving placeholders. Order by the verdict:
 
 - **CPU-bound**: first SMP on NVIDIA triples (test it alone, it is the one change that can misbehave), then cars drawn, world objects, shadow passes, Windows items. Spend the GPU's idle time on anti-aliasing, sharpening and sky for free.
 - **GPU-bound, compute**: particles full-res off, shader quality, resolution scaling as a last resort; spend the CPU's idle time on cars drawn for nearly free.

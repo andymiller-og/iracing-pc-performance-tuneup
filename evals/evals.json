@@ -16,7 +16,8 @@
         "Flags Draw Cars 20/8 as hiding cars in 30-40 car fields",
         "Recommends Nvidia Simultaneous Multi-Projection as a primary change and says to test it alone or watch for artifacts",
         "Flags the 232 fps cap as above the 165 Hz panel refresh",
-        "Gives at least two batches of 3-4 changes each, every change naming the sim page/section and the target value",
+        "Every proposed change names the sim's Options page/section as the UI shows it (e.g. Display > Monitor), not only an ini key",
+        "Gives at least two batches, the first being geometry, and asks for any missing inputs (viewing distance, monitor model) in the same message instead of leaving placeholders",
         "Includes an explicit least-confident list"
       ]
     },
@@ -31,7 +32,8 @@
         "Notes that VRAM is at or over the card's capacity (~12.7 GB of 12.3-12.9 GB)",
         "Identifies the memory-stall signature: GPU ~98% utilised but power (~163 W) well below the 200 W limit, or otherwise distinguishes memory-bound from compute-bound",
         "Does not conclude 'CPU-bound' from CPU busy ~frame time; mentions Reflex or explains why CPU busy tracks GPU time",
-        "Recommends Particles > Full Resolution Off as a rain-specific GPU relief",
+        "Identifies Particles > Full Resolution as the rain-specific GPU lever and notes it is already Off in the supplied settings",
+        "Does not recommend reducing Draw Cars or other distant-car visibility settings, given the user's stated priority",
         "Recommends freeing VRAM (overlays, background windows, or texture settings)",
         "Explicitly weighs that the user rarely races in rain and keeps dry image quality as the priority",
         "Proposes a dry baseline capture before spending headroom on visuals"
@@ -51,7 +53,8 @@
         "Proposes a repeatable baseline: an offline AI race in the user's typical conditions, captured from the start through a lap",
         "Says that changes will be applied in small batches with a measurement after each",
         "Asks about security trade-offs (Memory Integrity) or installs before doing them, rather than assuming consent",
-        "Reply is a single message of reasonable length (under ~600 words) that a user can act on"
+        "Reply is a single message of reasonable length (under ~600 words) that a user can act on",
+        "Does not present script output from the current machine as if it were the user's data"
       ]
     }
   ]
