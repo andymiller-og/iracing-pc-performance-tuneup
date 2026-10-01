@@ -15,15 +15,29 @@ NVIDIA on flat screens is measured. AMD and VR guidance is included but comes fr
 
 ## Install
 
-**Claude Code / Claude Desktop (personal skills folder):**
+No git required. Pick one:
+
+**Option 1, one line in PowerShell (recommended).** Downloads the latest version and puts it in your personal Claude skills folder. Re-run the same line to update.
 
 ```powershell
-git clone https://github.com/andymiller-og/iracing-pc-performance-tuneup "$env:USERPROFILE\.claude\skills\iracing-pc-performance-tuneup"
+irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1 | iex
 ```
 
-Then in a new Claude Code session type `/iracing-pc-performance-tuneup` or just ask "help me tune my iRacing graphics settings". To update later, `git pull` in that folder.
+**Option 2, download the ZIP.** Click the green **Code** button above → **Download ZIP**. Unzip it, rename the folder from `iracing-pc-performance-tuneup-main` to `iracing-pc-performance-tuneup`, and move it to:
 
-**Project-scoped instead:** clone into `<your-project>\.claude\skills\` instead of the user folder.
+```
+C:\Users\<you>\.claude\skills\iracing-pc-performance-tuneup
+```
+
+(Create the `.claude\skills` folders if they don't exist. `SKILL.md` must end up directly inside that folder.)
+
+**Option 3, the `.skill` file.** On the [Releases](https://github.com/andymiller-og/iracing-pc-performance-tuneup/releases) page, download `iracing-pc-performance-tuneup.skill`. Drop it into a Claude Code or Claude Desktop conversation and use **Save skill** on the file card, or unzip it (it is a zip) into the folder above.
+
+**Option 4, git**, if you have it: `git clone https://github.com/andymiller-og/iracing-pc-performance-tuneup "$env:USERPROFILE\.claude\skills\iracing-pc-performance-tuneup"` and `git pull` to update.
+
+Then start a new Claude Code session and type `/iracing-pc-performance-tuneup`, or just ask "help me tune my iRacing graphics settings".
+
+**Project-scoped instead:** use `<your-project>\.claude\skills\iracing-pc-performance-tuneup` as the destination (Option 1 accepts `-Dest`: download `install.ps1` and run `.\install.ps1 -Dest <path>`).
 
 **Any other harness:** point it at `SKILL.md`, or paste `PROMPT.md` (a single-prompt version that references the same scripts) into a session started in this folder.
 
