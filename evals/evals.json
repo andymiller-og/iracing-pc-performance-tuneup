@@ -5,18 +5,54 @@
       "id": 0,
       "prompt": "I've attached a PresentMon capture of iRacing from a 40-car replay and my rendererDX11Monitor.ini and app.ini. I run triples (3x 32\" 1440p 165Hz curved) on an RTX 4070 and i7-14700F, mostly 30-40 car GT3 races, dry. I want higher and smoother fps without the sim looking worse, and I don't want to lose distant car visibility or readable mirrors. Tell me what the bottleneck is and what in the data shows it, flag anything wrong in my settings, and give me the first two batches of changes with exact pages and expected gains. Say what you're least sure about.",
       "expected_output": "Verdict: CPU-bound render thread (CPUBusy ~= frame time, GPUWait ~3.8 ms, GPU 67%, power well under 200 W). Caveat that the capture is a replay, not driving. Flags: viewing distance 52 mm / FOV 179 clamp, monitor width 609 mm for a 31.5\" panel, radius 1000 vs 1500R, cap 232 on 165 Hz, no AA, Draw Cars 20/8, SMP off with 3 projections. Batch 1 = geometry; batch 2 = SMP tested alone (+ Windows items), with SMAA etc. as free GPU-side spend. Least-confident list includes SMP artifacts and replay-vs-driving extrapolation.",
-      "files": ["eval-files/pmcap-replay-baseline.csv", "eval-files/rendererDX11Monitor.ini", "eval-files/app.ini"]
+      "files": ["eval-files/pmcap-replay-baseline.csv", "eval-files/rendererDX11Monitor.ini", "eval-files/app.ini"],
+      "assertions": [
+        "Verdict names the CPU render thread (not GPU, RAM or thermal) as the limiter",
+        "Cites per-frame evidence: CPU busy ~frame time and/or GPU wait ~3-4 ms and/or GPU utilisation ~67% and/or GPU power well under the 200 W limit",
+        "States that the capture is a replay and therefore not representative of cockpit driving fps or the Driving settings column",
+        "Flags the viewing distance (52 mm / 2.05 in) and the clamped 179 FOV as a geometry error",
+        "Flags monitor width 609 mm / 23.98 in as wrong for a 31.5-inch panel and/or radius 1000 vs 1500R",
+        "Flags no anti-aliasing and recommends SMAA as a GPU-only cost",
+        "Flags Draw Cars 20/8 as hiding cars in 30-40 car fields",
+        "Recommends Nvidia Simultaneous Multi-Projection as a primary change and says to test it alone or watch for artifacts",
+        "Flags the 232 fps cap as above the 165 Hz panel refresh",
+        "Gives at least two batches of 3-4 changes each, every change naming the sim page/section and the target value",
+        "Includes an explicit least-confident list"
+      ]
     },
     {
       "id": 1,
       "prompt": "Here's a PresentMon capture from a 39-AI race start at Spa in the rain on my rig (RTX 4070 12GB, triples 7680x1440). It felt fine but I want to know what's limiting it and what to change. Settings file attached. I rarely race in rain; most of my racing is dry 30-50 car fields and I care about it looking good.",
       "expected_output": "Verdict: GPU-bound and memory-stalled (GPU ~98% but power ~163 W vs 200 W limit, VRAM 12.7 of 12.3-12.9 GB, GPUWait ~0). Reflex caveat for CPUBusy. Recommends particles Full Resolution Off first, freeing VRAM (overlays), and explicitly weighs that rain is rare for this user, so dry visuals stay the priority. Suggests a dry baseline before spending on visuals.",
-      "files": ["eval-files/pmcap-spa-rain.csv", "eval-files/rendererDX11Monitor-after-batch3.ini"]
+      "files": ["eval-files/pmcap-spa-rain.csv", "eval-files/rendererDX11Monitor-after-batch3.ini"],
+      "assertions": [
+        "Verdict is GPU-bound (not CPU-bound)",
+        "Reports average fps near 60 and 1% low near 47",
+        "Notes that VRAM is at or over the card's capacity (~12.7 GB of 12.3-12.9 GB)",
+        "Identifies the memory-stall signature: GPU ~98% utilised but power (~163 W) well below the 200 W limit, or otherwise distinguishes memory-bound from compute-bound",
+        "Does not conclude 'CPU-bound' from CPU busy ~frame time; mentions Reflex or explains why CPU busy tracks GPU time",
+        "Recommends Particles > Full Resolution Off as a rain-specific GPU relief",
+        "Recommends freeing VRAM (overlays, background windows, or texture settings)",
+        "Explicitly weighs that the user rarely races in rain and keeps dry image quality as the priority",
+        "Proposes a dry baseline capture before spending headroom on visuals"
+      ]
     },
     {
       "id": 2,
       "prompt": "I just want to make sure my iRacing settings are sane on this PC before the season starts. Single 1440p 144Hz monitor, RTX 3070, Ryzen 5800X3D. I don't have any captures yet. What do you need from me and what's the first thing we do?",
-      "expected_output": "Does not guess settings. Runs/instructs preflight (PresentMon install), asks the interview questions in one message, proposes reading the config and system snapshot via the scripts, and proposes a baseline AI race capture matching the user's typical conditions before any changes. Mentions the single-screen FOV note and the cap-below-refresh item as likely early batch items but defers to measurement."
+      "expected_output": "Does not guess settings. Runs/instructs preflight (PresentMon install), asks the interview questions in one message, proposes reading the config and system snapshot via the scripts, and proposes a baseline AI race capture matching the user's typical conditions before any changes. Mentions the single-screen FOV note and the cap-below-refresh item as likely early batch items but defers to measurement.",
+      "files": [],
+      "assertions": [
+        "Does not recommend specific graphics setting values before any measurement",
+        "Asks the user how they race: series/car and grid size, rain/night frequency, and frame-rate vs image-quality priority",
+        "Asks what the user refuses to lose and what they will sacrifice",
+        "Mentions Intel PresentMon as the measurement tool and how to install it (winget or link)",
+        "Proposes reading the sim's settings files and system facts from the PC rather than asking for screenshots",
+        "Proposes a repeatable baseline: an offline AI race in the user's typical conditions, captured from the start through a lap",
+        "Says that changes will be applied in small batches with a measurement after each",
+        "Asks about security trade-offs (Memory Integrity) or installs before doing them, rather than assuming consent",
+        "Reply is a single message of reasonable length (under ~600 words) that a user can act on"
+      ]
     }
   ]
 }
