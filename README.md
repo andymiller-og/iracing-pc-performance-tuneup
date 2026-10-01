@@ -15,31 +15,59 @@ NVIDIA on flat screens is measured. AMD and VR guidance is included but comes fr
 
 ## Install
 
-No git required. Pick one:
+Works with **Claude Code**, **OpenAI Codex CLI** and **Cursor**. They all read the same `SKILL.md` format; only the folder differs. No git required.
 
-**Option 1, one line in PowerShell (recommended).** Downloads the latest version and puts it in your personal Claude skills folder. Re-run the same line to update.
+### Option 1: one line in PowerShell (recommended)
+
+Open PowerShell (Start → type "PowerShell"), paste the line, press Enter. It downloads the latest version and installs it for every one of the three tools it finds on your PC. Run the same line again later to update.
 
 ```powershell
 irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1 | iex
 ```
 
-**Option 2, download the ZIP.** Click the green **Code** button above → **Download ZIP**. Unzip it, rename the folder from `iracing-pc-performance-tuneup-main` to `iracing-pc-performance-tuneup`, and move it to:
+To install for one tool only:
 
+| Tool | One line |
+|---|---|
+| Claude Code / Claude Desktop | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1))) -Harness claude` |
+| Codex CLI | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1))) -Harness codex` |
+| Cursor | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1))) -Harness cursor` |
+
+Then start a **new** session and use it:
+
+| Tool | How to start |
+|---|---|
+| Claude Code | type `/iracing-pc-performance-tuneup`, or ask "give my iRacing settings a quick check" |
+| Codex CLI | type `$iracing-pc-performance-tuneup`, or just ask |
+| Cursor | just ask; the agent picks the skill up from its description |
+
+### Option 2: download the ZIP
+
+Green **Code** button above → **Download ZIP**. Unzip, rename the folder from `iracing-pc-performance-tuneup-main` to `iracing-pc-performance-tuneup`, and move it so that `SKILL.md` sits directly inside:
+
+| Tool | Folder |
+|---|---|
+| Claude Code | `C:\Users\<you>\.claude\skills\iracing-pc-performance-tuneup` |
+| Codex CLI | `C:\Users\<you>\.codex\skills\iracing-pc-performance-tuneup` |
+| Cursor | `C:\Users\<you>\.cursor\skills\iracing-pc-performance-tuneup` |
+
+Create the `skills` folder if it doesn't exist. For a single project instead of your whole profile, use `<project>\.claude\skills\`, `<project>\.codex\skills\` or `<project>\.cursor\skills\`.
+
+### Option 3: the `.skill` file
+
+On the [Releases](https://github.com/andymiller-og/iracing-pc-performance-tuneup/releases) page, download `iracing-pc-performance-tuneup.skill`. In Claude Code or Claude Desktop, drop it into a conversation and use **Save skill** on the file card. For any tool, it is a zip: extract it into the folder above for your tool.
+
+### Option 4: git
+
+```powershell
+git clone https://github.com/andymiller-og/iracing-pc-performance-tuneup "$env:USERPROFILE\.claude\skills\iracing-pc-performance-tuneup"
 ```
-C:\Users\<you>\.claude\skills\iracing-pc-performance-tuneup
-```
 
-(Create the `.claude\skills` folders if they don't exist. `SKILL.md` must end up directly inside that folder.)
+Swap `.claude` for `.codex` or `.cursor` as needed; `git pull` in that folder to update.
 
-**Option 3, the `.skill` file.** On the [Releases](https://github.com/andymiller-og/iracing-pc-performance-tuneup/releases) page, download `iracing-pc-performance-tuneup.skill`. Drop it into a Claude Code or Claude Desktop conversation and use **Save skill** on the file card, or unzip it (it is a zip) into the folder above.
+### Anything else
 
-**Option 4, git**, if you have it: `git clone https://github.com/andymiller-og/iracing-pc-performance-tuneup "$env:USERPROFILE\.claude\skills\iracing-pc-performance-tuneup"` and `git pull` to update.
-
-Then start a new Claude Code session and type `/iracing-pc-performance-tuneup`, or just ask "help me tune my iRacing graphics settings".
-
-**Project-scoped instead:** use `<your-project>\.claude\skills\iracing-pc-performance-tuneup` as the destination (Option 1 accepts `-Dest`: download `install.ps1` and run `.\install.ps1 -Dest <path>`).
-
-**Any other harness:** point it at `SKILL.md`, or paste `PROMPT.md` (a single-prompt version that references the same scripts) into a session started in this folder.
+Point the agent at `SKILL.md`, or paste `PROMPT.md` (a single-prompt version that uses the same scripts) into a session started in this folder.
 
 ## Two ways to use it
 
