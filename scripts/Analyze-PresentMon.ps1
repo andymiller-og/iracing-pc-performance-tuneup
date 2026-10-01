@@ -70,7 +70,12 @@ $verdict = if (-not $gpuB) { 'No GPU timing columns; cannot classify. Re-capture
 $reflexNote = 'If NVIDIA Reflex is enabled in-game, MsCPUBusy is inflated to match the GPU (Reflex delays the CPU start), so a GPU-bound capture also shows CPU busy ~= frame time. Trust GPUWait and the GPU-bound count over CPUBusy.'
 
 $powerNote = $null
-if ($gpuP -and $PowerLimitW -gt 0) { $ps = Stat $gpuP; $powerNote = "GPU power mean $($ps.mean) W, p99 $($ps.p99) W vs limit $PowerLimitW W (" + [math]::Round(100*$ps.p99/$PowerLimitW,0) + "% of limit at p99). Within ~8% of the limit with the clock sagging below its usual boost = power-capped." }
+if ($gpuP -and $PowerLimitW -gt 0) {
+  $ps = Stat $gpuP; $pct = [math]::Round(100*$ps.p99/$PowerLimitW,0)
+  $clockNote = if ($gpuF) { $fs = Stat $gpuF; " Clock p50 $($fs.p50) MHz, max $($fs.max) MHz." } else { '' }
+  $capVerdict = if ($pct -ge 92) { "Likely power-capped (p99 within 8% of the limit); confirm with nvidia-smi clocks_event_reasons.sw_power_cap during a session." } else { "Not power-capped in this capture (p99 at $pct% of the limit)." }
+  $powerNote = "GPU power mean $($ps.mean) W, p99 $($ps.p99) W vs limit $PowerLimitW W ($pct% of limit at p99).$clockNote $capVerdict"
+}
 $modes = ($cols['PresentMode'] | Group-Object | Sort-Object Count -Descending | ForEach-Object { "$($_.Name)=$($_.Count)" }) -join '; '
 
 # buckets
