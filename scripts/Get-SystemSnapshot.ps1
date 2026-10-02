@@ -43,8 +43,10 @@ if ($smi) {
 }
 $hags = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\GraphicsDrivers' -Name HwSchMode).HwSchMode
 "Hardware-accelerated GPU scheduling: " + $(switch ($hags) { 2 {'On'} 1 {'Off'} default {'default/unknown'} })
-$mpo = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\Dxgkrnl' -Name OverlayTestMode).OverlayTestMode
-"Multi-plane overlay: " + $(if ($mpo -eq 5) {'disabled via OverlayTestMode=5'} else {'enabled (Windows default)'})
+$mpo = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\Dwm' -Name OverlayTestMode -ErrorAction SilentlyContinue).OverlayTestMode
+$mpoStray = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\Dxgkrnl' -Name OverlayTestMode -ErrorAction SilentlyContinue).OverlayTestMode
+"Multi-plane overlay: " + $(if ($mpo -eq 5) {'Dwm OverlayTestMode=5 is set (requested off; confirm with the capture present mode, newer Windows builds may ignore it)'} else {'enabled (Windows default)'})
+if ($null -ne $mpoStray) { "  Note: OverlayTestMode is also set under ...\Windows\Dxgkrnl, which has no effect and can be deleted." }
 
 Section 'Monitors (from EDID)'
 $ids = Get-CimInstance -Namespace root\wmi -ClassName WmiMonitorID
@@ -58,7 +60,7 @@ foreach ($m in $ids) {
 }
 $vc = Get-CimInstance Win32_VideoController | Where-Object { $_.CurrentHorizontalResolution } | Select-Object -First 1
 if ($vc) { "Primary desktop mode: $($vc.CurrentHorizontalResolution)x$($vc.CurrentVerticalResolution) @ $($vc.CurrentRefreshRate) Hz (confirm each panel's refresh in Settings > Display > Advanced; EDID mode lists are unreliable)" }
-"Note: EDID names can differ from retail names (e.g. GS32QC = G32QC A). EDID gives the active picture size, not the outer monitor width. Look up the model's spec sheet; see references/monitor-geometry.md."
+"Note: EDID names can differ from retail names (model codes rather than marketing names). EDID gives the active picture size, not the outer monitor width. Look up the model's spec sheet; see references/monitor-geometry.md."
 
 Section 'Windows power and security'
 $scheme = (powercfg /getactivescheme) -replace '.*\((.*)\).*','$1'

@@ -1,4 +1,4 @@
-# NVIDIA specifics (measured on RTX 40-series, driver 617.x, NVIDIA app 11.x, 2026)
+# NVIDIA specifics (NVIDIA app 11.x layout, late 2026; verify menus with a search)
 
 ## The Control Panel is gone
 
@@ -13,7 +13,7 @@ Confirm the installed driver with `nvidia-smi --query-gpu=driver_version --forma
 
 ## Simultaneous Multi-Projection (SMP)
 
-In the sim: Display → Monitor → **Nvidia Simultaneous Multi-Projection: On**, with Render Scene Using 3 Projections also On. Requires Pascal or newer. On a triple rig that the capture shows as CPU-bound, this is the first change to make and the one to test **alone**: measured −32% render-thread time, +45% fps. Known failure modes to ask about after the test run: shimmering or misaligned shadows at the bezel seams, virtual mirror rendering wrong, no change at all. If any appear, turn it back off; not every build behaves.
+In the sim: Display → Monitor → **Nvidia Simultaneous Multi-Projection: On**, with Render Scene Using 3 Projections also On. Requires Pascal or newer. On a triple rig that the capture shows as CPU-bound, this is the first change to make and the one to test **alone**. With 3 projections the sim submits the scene once per screen; SMP lets the GPU replicate the geometry across the three views in one pass, so the render thread's work per frame drops substantially. On a CPU-bound triple rig it is often the single largest gain available; on a GPU-bound rig it changes little. Known failure modes to ask about after the test run: shimmering or misaligned shadows at the bezel seams, virtual mirror rendering wrong, no change at all. If any appear, turn it back off; not every build behaves.
 
 Not applicable to single screens (nothing to multi-project) or AMD/Intel GPUs.
 
@@ -21,7 +21,7 @@ Not applicable to single screens (nothing to multi-project) or AMD/Intel GPUs.
 
 1. NVIDIA app → System → Displays → G-SYNC and Surround: set G-SYNC to **On, Full screen and windowed** (the sim runs borderless, so "full screen only" would not apply).
 2. This global setting is **not enough** for non-validated panels. Select each display in the diagram, scroll to Display Properties, and switch that display's own **G-SYNC** toggle On. The caption "Selected display is not validated as G-SYNC compatible" is informational. Repeat for every racing display; leave non-racing monitors off.
-3. Graphics → Program Settings → add `C:\Program Files (x86)\iRacing\iRacingSim64DX11.exe` (the sim is not auto-detected; "Program doesn't support optimization" is harmless). Set **Vertical Sync On**, **Low Latency Mode Off** (in-game Reflex already does this), **Power management mode Prefer maximum performance**. Leave Max Frame Rate Off and cap in the sim instead.
+3. Graphics → Program Settings → add the sim's executable (default `C:\Program Files (x86)\iRacing\iRacingSim64DX11.exe`) (the sim is not auto-detected; "Program doesn't support optimization" is harmless). Set **Vertical Sync On**, **Low Latency Mode Off** (in-game Reflex already does this), **Power management mode Prefer maximum performance**. Leave Max Frame Rate Off and cap in the sim instead.
 4. In the sim: Vertical Sync stays Off; Max Frames Per Second 3–5 below the panel refresh.
 
 Confirm it took: Program Settings shows the changed rows in bold without the "Global" prefix, and Monitor Technology reads "G-SYNC Compatible".
@@ -29,11 +29,11 @@ Confirm it took: Program Settings shows the changed rows in bold without the "Gl
 ### Flicker after enabling VRR
 
 - **Brightness pumping on all VRR panels, worst in menus and loading screens**: VA-panel VRR flicker. Fix: per-display G-SYNC off and driver vsync off; keep the frame cap.
-- **Colour-tinted (bluish) flicker on the primary display only, in a windowed app such as the iRacing UI**: multi-plane overlay interacting with the driver. Rule out the cable by swapping DisplayPort cables between two screens, then disable MPO (reversible, no performance cost):
+- **Colour-tinted (bluish) flicker on the primary display only, in a windowed app such as the iRacing UI**: multi-plane overlay interacting with the driver. Rule out the cable by swapping DisplayPort cables between two screens, then disable MPO (reversible, no performance cost). NVIDIA's own fix (support article 5157, `mpo_disable.reg`) sets this value:
   ```
-  reg add "HKLM\SOFTWARE\Microsoft\Windows\Dxgkrnl" /v OverlayTestMode /t REG_DWORD /d 5 /f
+  reg add "HKLM\SOFTWARE\Microsoft\Windows\Dwm" /v OverlayTestMode /t REG_DWORD /d 5 /f
   ```
-  Reboot. Undo with `reg delete ... /v OverlayTestMode /f`. The capture's present mode changing from "Hardware: Independent Flip" to "Hardware Composed: Independent Flip" is the overlay path appearing. Have the user run the command themselves; it is a system change.
+  Reboot. Undo with `reg delete "HKLM\SOFTWARE\Microsoft\Windows\Dwm" /v OverlayTestMode /f` and reboot. Have the user run the command themselves; it is a system change. Search for current reports before recommending it: on Windows 11 25H2 there are reports that this value no longer fully disables MPO. Judge the fix by the symptom after a reboot and by the capture: a present mode of "Hardware Composed: Independent Flip" means the sim is still on an overlay plane; "Hardware: Independent Flip" means it is not. A value set under any other key (for example `...\Windows\Dxgkrnl`) does nothing; if you find one, tell the user it can be deleted.
 
 ## Power and thermal reading
 

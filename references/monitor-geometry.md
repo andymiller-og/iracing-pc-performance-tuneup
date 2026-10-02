@@ -15,18 +15,18 @@ iRacing computes the driving field of view from the physical size and position o
 
 ## Sanity checks
 
-- The sim stores everything in mm in `[MonitorSetup]`: MonitorWidth, ScreenWidth (active), ViewingDist, RadiusOfCurvature. ViewingDist under 300 mm or over 1500 mm is a typo or a unit mix-up (the worked example had 52 mm: "2.05 in" typed where inches were meant to be 25).
+- The sim stores everything in mm in `[MonitorSetup]`: MonitorWidth, ScreenWidth (active), ViewingDist, RadiusOfCurvature. ViewingDist under 300 mm or over 1500 mm is a typo or a unit mix-up (a common one: "2.05 in" typed where 25 in was meant, stored as 52 mm).
 - `drivingCamFOV=179` in app.ini is the clamp. A real computed value for 32" triples at 25–30 in is 150–175°.
 - Per-screen horizontal FOV ≈ 2·atan(active width / 2 / viewing distance). Total ≈ 3× that for angled triples, slightly more for curved panels. Use this to tell the user what to expect before they press Compute.
 - Side screens must be physically angled so the three form an arc around the eye point. Check: a pit wall or the horizon should run across each bezel without a kink. Bending outward at the seam = angle the side screen in more.
 
 ## Looking up the panel
 
-Search "<model> specifications dimensions" and read the manufacturer page or displayspecifications.com. The EDID name reported by Windows can differ from the retail name (e.g. "GS32QC" for a G32QC A). Confirm the model with the user; `scripts/Get-SystemSnapshot.ps1` prints the EDID name and approximate diagonal.
+Search "<model> specifications dimensions" and read the manufacturer page or displayspecifications.com. The EDID name reported by Windows can differ from the retail name (a model code or abbreviated name rather than the marketing name). Confirm the model with the user; `scripts/Get-SystemSnapshot.ps1` prints the EDID name and approximate diagonal.
 
 ## What the user will notice after the fix
 
-Going from a clamped 179° to a correct ~167° on 32" triples at 25 in: everything about 7–10% larger, slightly less at the extreme edges, a lower sense of speed for a session, braking markers appearing a touch closer. Advise them to drive two or three sessions before judging and not to type a larger number back into the FOV box.
+Going from a clamped 179° to a correct value in the 160s on 32" triples: everything about 7–10% larger, slightly less at the extreme edges, a lower sense of speed for a session, braking markers appearing a touch closer. Advise them to drive two or three sessions before judging and not to type a larger number back into the FOV box.
 
 ## Single screens and ultrawides
 

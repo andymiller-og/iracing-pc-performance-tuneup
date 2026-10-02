@@ -2,7 +2,7 @@
 
 A measure-first tune-up for iRacing graphics and performance that an AI coding agent runs with you on your own PC. It reads your sim settings and hardware itself (no screenshots), interviews you about how you race and what you care about, drives Intel PresentMon captures of a repeatable AI race, tells you whether the CPU, GPU, memory or thermals are the limit and why, then changes settings in small approved batches with a measurement after each, and writes a report at the end, including what it deliberately didn't change.
 
-It came out of one real tune-up on a triple-screen GT3 rig (RTX 4070, i7-14700F) that went from a CPU-choked 94 fps to 127 fps on the same replay with better image quality, and the whole run with its mistakes is included as the worked example. The idea to do it this way, with an AI agent reading the hardware and measuring instead of following a generic settings guide, came from F1GamerDad's video [Your iRacing Settings Are Wrong (And It's Not Your Hardware's Fault)](https://youtu.be/ZMgnmJRoGVk).
+It is hardware-neutral: it doesn't assume what your PC should score. It places your CPU and GPU against the pixels you drive, checks your settings for the low-hanging fruit (wrong triple-screen geometry, Simultaneous Multi-Projection off on NVIDIA triples, a frame cap above refresh, cars not drawn, a Dynamic LOD threshold above your fps), and then lets your own captures decide every trade. The idea to do it this way, with an AI agent reading the hardware and measuring instead of following a generic settings guide, came from F1GamerDad's video [Your iRacing Settings Are Wrong (And It's Not Your Hardware's Fault)](https://youtu.be/ZMgnmJRoGVk).
 
 ## What it needs
 
@@ -11,7 +11,7 @@ It came out of one real tune-up on a triple-screen GT3 rig (RTX 4070, i7-14700F)
 - An agent harness that supports the [Agent Skills](https://agentskills.io) format (`SKILL.md`): Claude Code, Claude Desktop, and others that read `SKILL.md` folders
 - Optional: HWiNFO64 (`winget install --id REALiX.HWiNFO -e`)
 
-NVIDIA on flat screens is measured. AMD and VR guidance is included but comes from general knowledge, and the skill says so when it applies. The skill also expects the agent to have web search: driver versions, vendor-app menus, monitor spec sheets and VR headset specifics are looked up live rather than recalled, because they change faster than any model's training data.
+NVIDIA guidance is the most tested. AMD and VR guidance is included but comes from public sources and general knowledge, and the skill says so when it applies. The skill also expects the agent to have web search: driver versions, vendor-app menus, monitor spec sheets and VR headset specifics are looked up live rather than recalled, because they change faster than any model's training data.
 
 ## Install
 

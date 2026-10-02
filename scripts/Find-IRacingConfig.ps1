@@ -18,7 +18,7 @@ if (-not $Path) { $Path = Join-Path ([Environment]::GetFolderPath('MyDocuments')
 if (-not (Test-Path $Path)) { Write-Error "iRacing settings folder not found at $Path. Launch the sim once, or pass -Path."; exit 1 }
 
 $sim = Get-Process iRacingSim64DX11
-if ($sim) { "NOTE: the sim is running (PID $($sim.Id)). Values below are what is on disk; the sim may not have written recent changes yet. Re-run after the sim exits to be sure." }
+if ($sim) { "NOTE: the sim is running (PID $($sim.Id)). Values below are what is on disk; the sim writes this file when it exits, and some changes only apply after a restart. Quit and relaunch the sim, then re-run this to verify." }
 
 $candidates = @('rendererDX11Monitor.ini','rendererDX11OpenXR.ini','rendererDX11OpenVR.ini','rendererDX11Oculus.ini','rendererDX11.ini')
 $files = foreach ($c in $candidates) { $f = Join-Path $Path $c; if (Test-Path $f) { Get-Item $f } }
@@ -36,8 +36,10 @@ function Parse-Ini($file) {
   return $ini
 }
 $r = Parse-Ini $renderer.FullName
-$g = $r['Graphics Options']; $rg = $r['Replay Graphics']; $ms = $r['MonitorSetup']; $d = $r['Display']
+$g = $r['Graphics Options']; $rg = $r['Replay Graphics']; $ms = $r['MonitorSetup']; $d = $r['Display']; $uo = $r['User Options']
 $appFile = Join-Path $Path 'app.ini'; $a = if (Test-Path $appFile) { Parse-Ini $appFile } else { @{} }
+# The focus-loss setting has lived in both files across builds; prefer the renderer file, fall back to app.ini.
+$focusLost = if ($uo -and $null -ne $uo['reduceFramerate_WhenFocusLost']) { $uo['reduceFramerate_WhenFocusLost'] } else { $a['User Options']['reduceFramerate_WhenFocusLost'] }
 
 function Lvl($v, $map) { if ($null -eq $v) { return '-' }; if ($map.ContainsKey([string]$v)) { return $map[[string]$v] } ; return $v }
 $offLowMedHigh = @{'0'='Off';'1'='Low';'2'='Medium';'3'='High'}
@@ -56,6 +58,7 @@ $rows = @(
   Row 'HDR' 'Graphics > Image Quality' (Lvl $g['EnableHDR'] $onoff) (Lvl $rg['EnableHDR'] $onoff)
   Row 'Shader Quality' 'Graphics > Image Quality' (Lvl $g['ShaderQuality'] $lowMedHighMax) ''
   Row 'Anti-Aliasing Method' 'Graphics > Anti-Aliasing' "$(Lvl $g['AntiAliasMethod'] $aa)$(if ($g['AntiAliasMethod'] -eq '1') {" $($g['MSAASamples'])x"})" ''
+  Row 'MSAA filter' 'Graphics > Anti-Aliasing' $(if ($g['AntiAliasMethod'] -eq '1') { Lvl $g['MSAAUseFilter'] @{'0'='Soft';'1'='Neutral';'2'='Sharp';'3'='Simple (legacy)'} } else { '(MSAA not in use)' }) ''
   Row 'Sharpening' 'Graphics > Post-Processing' "$(Lvl $g['Sharpening'] $onoff) (amount $($g['SharpeningAmount']))" (Lvl $rg['Sharpening'] $onoff)
   Row 'SSAO / Heat Haze / DoF / Distortion' 'Graphics > Post-Processing' "$(Lvl $g['SSAO'] $onoff) / $(Lvl $g['HeatHaze'] $onoff) / $(Lvl $g['DepthOfField'] $onoff) / $(Lvl $g['Distortion'] $onoff)" ''
   Row 'Screen Space Reflections' 'Graphics > Other Effects' (Lvl $g['SSRLevel'] @{'0'='Off';'1'='Low res';'2'='Full res'}) (Lvl $rg['SSRLevel'] @{'0'='Off';'1'='Low res';'2'='Full res'})
@@ -87,6 +90,7 @@ $rows = @(
   Row 'Vertical Sync (in-game)' 'Graphics > Frame Rate' (Lvl $g['VerticalSync'] $onoff) ''
   Row 'Video Memory Swap High-Res Cars / 2048 Car Textures' 'Graphics > Video Memory' "$(Lvl $g['CacheSwap3HighResCars'] $onoff) / $(Lvl $g['CarPaint2048x2048'] $onoff)" ''
   Row 'Video memory budget (auto, MB)' '(not in UI)' $g['VidMemToUseMB'] ''
+  Row 'Reduce frame rate when focus lost' '(not in UI)' (Lvl $focusLost @{'0'='No (full rate)';'1'='Yes'}) ''
 )
 ""; "== Graphics settings ($($renderer.Name))"
 $rows | Format-Table -AutoSize -Wrap
@@ -105,17 +109,19 @@ if ($ms) {
 $flags = @()
 if ($ms) {
   $vd = [double]$ms['ViewingDist']; if ($vd -lt 300 -or $vd -gt 1500) { $flags += "Viewing distance $vd mm is implausible (typical 500-900 mm). Likely a typo or unit mix-up; FOV will be clamped." }
-  if ([double]$a['View']['drivingCamFOV'] -ge 178) { $flags += "FOV is $($a['View']['drivingCamFOV'])°, which is the sim's clamp, not a computed value. Geometry inputs are wrong." }
+  if ([double]$a['View']['drivingCamFOV'] -ge 178) { $flags += "FOV is $($a['View']['drivingCamFOV']) degrees, which is the sim's clamp, not a computed value. Geometry inputs are wrong." }
   if ($ms['NumMonitors'] -eq '3' -and $ms['RenderViewPerMonitor'] -eq '1' -and $ms['EnableSMPSurround'] -eq '0') { $flags += "Triples with 3 projections but SMP off. On NVIDIA this is the single largest CPU-side win (see references/nvidia.md); not available on AMD." }
+  if ([double]$ms['MonitorWidth'] -lt [double]$ms['ScreenWidth']) { $flags += "Monitor width ($($ms['MonitorWidth']) mm) is smaller than the screen (active) width ($($ms['ScreenWidth']) mm). Monitor width is the outer width including bezels; one of the two is wrong. Check the spec sheet." }
   if ($ms['MonitorType'] -eq '1' -and $ms['RadiusOfCurvature'] -eq '1000') { $flags += "Radius of curvature is the 1000 mm default; verify against the panel spec (1000R/1500R/1800R)." }
 }
-if ($g['AntiAliasMethod'] -eq '0') { $flags += "No anti-aliasing. Distant cars and fences will shimmer; SMAA is GPU-only cost and usually the best visibility-per-frame trade." }
+if ($g['AntiAliasMethod'] -eq '0') { $flags += "No anti-aliasing. Distant cars and fences will shimmer; any method is a GPU-only cost. SMAA and MSAA 2x are the usual candidates; which is cheaper differs by rig, so measure." }
 if ([int]$g['MaxCarsToDraw'] -lt 30) { $flags += "Draw Cars $($g['MaxCarsToDraw']): in fields larger than this, the farther cars are not drawn at all. Compare with the grid sizes the user races." }
 if ([int]$g['LODMinFPSTarget'] -gt 65) { $flags += "Dynamic LOD threshold $($g['LODMinFPSTarget']) is above typical frame rates for many rigs; if fps sits below it, the sim is actively stripping car detail (seen as 'looks worse')." }
 if ($g['LimitFrameRate'] -eq '1' -and [int]$g['DesiredFPSLimit'] -gt 170) { $flags += "Frame cap $($g['DesiredFPSLimit']) is above most panels' refresh; set a cap 3-5 below the panel refresh when using VRR." }
 if ($g['ParticlesFullRes'] -eq '1') { $flags += "Full-resolution particles on: the largest GPU cost in rain spray. Fine if the user rarely races in rain and has GPU headroom." }
 if ($g['Sharpening'] -eq '1' -and $g['AntiAliasMethod'] -eq '0') { $flags += "Sharpening with no AA amplifies aliasing on thin edges (dash, fences)." }
 if ($d['fullScreen'] -eq '1' -and $ms['NumMonitors'] -eq '3') { $flags += "Exclusive full screen on triples needs NVIDIA Surround / AMD Eyefinity; borderless with Independent Flip is normally equivalent (verify PresentMode in the capture)." }
+if ($focusLost -eq '1') { $flags += "The sim lowers its frame rate whenever another program has keyboard focus. Harmless if nothing takes focus while racing; a problem with overlays or tools that grab focus. Only changeable in the renderer file (reduceFramerate_WhenFocusLost=0), so the user changes it with the sim closed (reduceFramerate_WhenFocusLost=0); don't edit it for them." }
 if ($flags.Count -eq 0) { "none from heuristics" } else { $flags | ForEach-Object { " - $_" } }
 
 if ($Raw) {

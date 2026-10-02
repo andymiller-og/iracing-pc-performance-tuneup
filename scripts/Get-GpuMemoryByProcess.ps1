@@ -6,7 +6,7 @@
   The Windows compositor (dwm) holds memory for every monitor and open window, and overlays (NVIDIA app, Racelab,
   SimHub, Discord) hold more. When the total reaches the card's capacity, the sim stalls on memory: GPU utilisation
   reads ~99% while GPU power drops below what the same card draws when compute-bound. That pattern was decisive in the
-  worked example's rain test.
+  rain test with a full field.
 #>
 [CmdletBinding()]
 param()

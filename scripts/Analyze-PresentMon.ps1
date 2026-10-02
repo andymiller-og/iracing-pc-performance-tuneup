@@ -9,6 +9,9 @@
   The capture CSV.
 .PARAMETER BucketSeconds
   Width of the time-series buckets. Default 15.
+.PARAMETER StartWindowSeconds
+  Length of the start window summarised on its own (default 120: grid, start and most of a first lap). Use it to
+  compare captures of different lengths; later laps run faster as the field spreads out.
 .PARAMETER PowerLimitW
   GPU board power limit (e.g. from nvidia-smi). When given, the script reports how close mean/p99 power sat to it.
 .PARAMETER Json
@@ -18,6 +21,7 @@
 param(
   [Parameter(Mandatory=$true)][string]$Path,
   [int]$BucketSeconds = 15,
+  [int]$StartWindowSeconds = 120,
   [double]$PowerLimitW = 0,
   [switch]$Json
 )
@@ -78,9 +82,20 @@ if ($gpuP -and $PowerLimitW -gt 0) {
 }
 $modes = ($cols['PresentMode'] | Group-Object | Sort-Object Count -Descending | ForEach-Object { "$($_.Name)=$($_.Count)" }) -join '; '
 
+# start window: same-length comparison between captures of different durations
+$maxT = ($t | Measure-Object -Maximum).Maximum
+$sw = $null
+if ($maxT -gt $StartWindowSeconds) {
+  $swFt = @(); for($i=0;$i -lt $n;$i++){ if($t[$i] -lt $StartWindowSeconds -and -not [double]::IsNaN($ft[$i])){ $swFt += $ft[$i] } }
+  if ($swFt.Count -ge 50) {
+    $swSorted = @($swFt | Sort-Object -Descending)
+    $sw = [pscustomobject]@{ seconds=$StartWindowSeconds; frames=$swFt.Count; avgFps=[math]::Round(1000/(($swFt | Measure-Object -Average).Average),1); low1pctFps=[math]::Round(1000/(Pct $swSorted 0.01),1) }
+  }
+}
+$durationWarning = if ($maxT -lt 30) { "Capture is only $([math]::Round($maxT,1)) s long. That is a mis-triggered capture, not a measurement; re-capture from before the lights through at least one lap." } else { $null }
+
 # buckets
 $buckets = @()
-$maxT = ($t | Measure-Object -Maximum).Maximum
 for($b=0; $b -lt $maxT; $b+=$BucketSeconds){
   $idx = @(); for($i=0;$i -lt $n;$i++){ if($t[$i] -ge $b -and $t[$i] -lt ($b+$BucketSeconds)){ $idx += $i } }
   if($idx.Count -lt 5){continue}
@@ -91,6 +106,7 @@ for($b=0; $b -lt $maxT; $b+=$BucketSeconds){
 
 $result = [ordered]@{
   file = (Split-Path $Path -Leaf); frames = $n; durationS = [math]::Round($maxT,0); application = ($cols['Application'] | Select-Object -First 1)
+  durationWarning = $durationWarning; startWindow = $sw
   avgFps = [math]::Round($avgFps,1); low1pctFps = [math]::Round($low1,1); low01pctFps = [math]::Round($low01,1)
   framesOver16_7ms = ($ftSorted | Where-Object { $_ -gt 16.7 }).Count; framesOver33ms = ($ftSorted | Where-Object { $_ -gt 33.3 }).Count
   frameTimeMs = (Stat $ft); cpuBusyMs = (Stat $cpuB); cpuWaitMs = (Stat $cpuW); gpuBusyMs = (Stat $gpuB); gpuWaitMs = (Stat $gpuW)
@@ -104,6 +120,8 @@ if ($Json) { $result | ConvertTo-Json -Depth 5; exit }
 
 "File: $($result.file)   frames=$n   duration=$($result.durationS)s   app=$($result.application)"
 "Average FPS = $($result.avgFps)   1% low = $($result.low1pctFps)   0.1% low = $($result.low01pctFps)   frames >16.7ms: $($result.framesOver16_7ms)   >33ms: $($result.framesOver33ms)"
+if ($durationWarning) { "WARNING: $durationWarning" }
+if ($sw) { "Start window (first $($sw.seconds) s, $($sw.frames) frames): average FPS = $($sw.avgFps)   1% low = $($sw.low1pctFps)   (compare this line between captures of different lengths)" }
 ""
 "{0,-16} {1,8} {2,8} {3,8} {4,8} {5,8} {6,8}" -f 'metric','mean','min','p1','p50','p99','max'
 foreach ($k in 'frameTimeMs','cpuBusyMs','cpuWaitMs','gpuBusyMs','gpuWaitMs','gpuPowerW','gpuMHz','gpuTempC','gpuUtilPct','cpuUtilPct') { $s = $result[$k]; if ($s) { "{0,-16} {1,8} {2,8} {3,8} {4,8} {5,8} {6,8}" -f $k,$s.mean,$s.min,$s.p1,$s.p50,$s.p99,$s.max } }
