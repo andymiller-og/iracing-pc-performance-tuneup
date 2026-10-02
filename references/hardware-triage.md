@@ -56,12 +56,12 @@ These are correctness fixes. They are safe to recommend in a quick check without
 |---|---|---|
 | Triple-screen geometry wrong (viewing distance typo, monitor width not the outer width, wrong curve radius) or FOV at the 179° clamp | `Find-IRacingConfig.ps1` geometry section; `monitor-geometry.md` | Wrong FOV draws more world than the eye can see and distorts speed and distance |
 | SMP off on NVIDIA triples with 3 projections on | Display > Monitor | Up to three times the render-thread submission work |
-| Frame cap above the panel refresh, or no cap, with VRR available | Graphics > Frame Rate | VRR disengages above refresh; tearing or judder, wasted GPU power |
-| VRR (G-SYNC / FreeSync) off on panels that support it | Vendor app | 70–100 fps feels smooth with VRR and judders without it |
+| Frame cap far above the panel refresh with VRR on (on NVIDIA with Reflex + driver vsync, no sim cap is fine: Reflex caps itself) | Graphics > Frame Rate | VRR disengages above refresh; tearing or judder, wasted GPU power |
+| VRR (G-SYNC / FreeSync): **ask, don't assume**. The scripts can't see it; tell the user exactly where to check | Vendor app, monitor OSD | Without VRR, any fps below refresh tears or judders |
 | Draw Cars below the user's typical grid size | Graphics > Other Cars Detail | Cars beyond the count are not drawn at all |
-| Dynamic LOD Frame Rate Threshold above the fps the rig is likely to hold at a race start | Graphics > Dynamic LOD | The sim strips car and world detail every time fps dips below it; the user reports "it looks worse" |
-| No anti-aliasing at all | Graphics > Anti-Aliasing | Shimmer on fences and distant cars; makes distant cars harder to read |
-| Driver well behind the current release | `nvidia-smi` or the vendor app, versus a web search for the current release | Performance and VRR fixes |
+| Dynamic LOD Frame Rate Threshold above the fps the rig normally runs (not merely above the start lows, which is a choice; see `settings-reference.md`) | Graphics > Dynamic LOD | The sim simplifies cars and scenery all the time; the user reports "it looks worse" |
+| No anti-aliasing at all: **ask** whether shimmer bothers them (some competitive drivers run it off deliberately); otherwise list under "can't tell without a capture" | Graphics > Anti-Aliasing | Shimmer on fences and distant cars; makes distant cars harder to read |
+| Driver well behind the current release. On AMD, map the Windows driver number to the Adrenalin version first (`amd.md`) | `nvidia-smi` or the vendor app, versus a web search for the current release | Performance and VRR fixes |
 | Power mode not on Best performance (desktop) | Windows Settings > System > Power | The render thread's core loses boost |
 | Vendor overlay running while racing (NVIDIA app overlay, Adrenalin overlay) | Vendor app | VRAM and compositor cost for nothing during a race |
 | 2048x2048 car textures or high car detail on a card already near full VRAM | Graphics > Video Memory / World Detail | Stutter at starts |
@@ -72,7 +72,7 @@ Not low-hanging fruit, and never applied in a quick check: Memory Integrity (a s
 
 ## 6. What only a capture can tell you
 
-Which side is actually limiting, and in which part of the race; whether VRAM is full; whether the GPU is at its power limit; whether rain or night changes the picture; how much a trade really costs on this machine. Published costs, including the ones in `settings-reference.md`, are directions. Relative costs differ between rigs and builds; anti-aliasing methods are a known example where the ranking can flip.
+Which side is actually limiting, and in which part of the race; whether VRAM is full; whether the GPU is at its power limit; whether rain or night changes the picture; how much a trade really costs on this machine. Published costs, including the ones in `settings-reference.md`, are directions; relative costs differ between rigs and builds.
 
 ## Sources
 

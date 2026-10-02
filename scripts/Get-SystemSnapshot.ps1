@@ -22,21 +22,27 @@ $cs = Get-CimInstance Win32_ComputerSystem; $os = Get-CimInstance Win32_Operatin
 "OS: $($os.Caption) build $($os.BuildNumber)   Last boot: $([datetime]$os.LastBootUpTime)"
 
 Section 'CPU'
-$cpu = Get-CimInstance Win32_Processor
+$cpu = Get-CimInstance Win32_Processor | Select-Object -First 1
 "$($cpu.Name.Trim())   cores=$($cpu.NumberOfCores) threads=$($cpu.NumberOfLogicalProcessors) maxClock=$($cpu.MaxClockSpeed) MHz"
-if ($cpu.Name -match 'i[579]-1[2345]\d{3}|Core Ultra') { "Hybrid Intel CPU (P-cores + E-cores): the sim's render thread should sit on a P-core; check per-core load if stutter is reported." }
+# Hybrid Intel: P-cores have 2 threads, E-cores 1, so threads is neither cores nor 2x cores (Core Ultra 200 has no HT at all).
+# A plain i5-12400/13400F-style name is not enough: the 12400/12500/12600 non-K have no E-cores.
+$hybrid = $cpu.Manufacturer -match 'Intel' -and (($cpu.NumberOfLogicalProcessors -ne $cpu.NumberOfCores -and $cpu.NumberOfLogicalProcessors -ne 2*$cpu.NumberOfCores) -or $cpu.Name -match 'Core\(TM\) Ultra|Core Ultra')
+if ($hybrid) { "Hybrid Intel CPU (P-cores + E-cores): the sim's render thread should sit on a P-core; check per-core load if stutter is reported." }
 
 Section 'Memory'
 $dimms = Get-CimInstance Win32_PhysicalMemory
 $total = [math]::Round(($dimms | Measure-Object Capacity -Sum).Sum / 1GB, 0)
 $speeds = ($dimms | ForEach-Object { "$($_.ConfiguredClockSpeed)/$($_.Speed)" } | Select-Object -Unique) -join ', '
-"$total GB total in $($dimms.Count) module(s); configured/rated MT/s: $speeds   (equal numbers = running at rated speed; $($dimms.Count) modules in 2 slots pairs = dual channel)"
+$slots = ($dimms | ForEach-Object { (@($_.BankLabel, $_.DeviceLocator) | Where-Object { $_ }) -join ' ' }) -join '; '
+"$total GB total in $(@($dimms).Count) module(s); configured/rated MT/s: $speeds   (equal numbers = running at rated speed)"
+"Slots in use: $slots"
+"Channel count: not reported by Windows. 1 module = single channel (unless the memory is soldered); 2 or 4 modules in the slots the board manual marks for dual channel (often A2+B2, or labels naming channels A and B) = dual channel."
 "Free now: $([math]::Round($os.FreePhysicalMemory/1MB,1)) GB"
 
 Section 'GPU'
 $gpus = Get-CimInstance Win32_VideoController | Where-Object { $_.Name -notmatch 'Virtual|Basic Display|Meta' }
-foreach ($g in $gpus) { "$($g.Name)   driver $($g.DriverVersion) ($($g.DriverDate.ToString('yyyy-MM-dd')))" }
-$smi = Get-Command nvidia-smi; if (-not $smi -and (Test-Path "$env:windir\System32\nvidia-smi.exe")) { $smi = "$env:windir\System32\nvidia-smi.exe" } else { $smi = $smi.Source }
+foreach ($g in $gpus) { "$($g.Name)   driver $($g.DriverVersion)$(if ($g.DriverDate) { ' (' + ([datetime]$g.DriverDate).ToString('yyyy-MM-dd') + ')' })" }
+$smi = (Get-Command nvidia-smi).Source; if (-not $smi -and (Test-Path "$env:windir\System32\nvidia-smi.exe")) { $smi = "$env:windir\System32\nvidia-smi.exe" }
 if ($smi) {
   "nvidia-smi: " + (& $smi --query-gpu=name,driver_version,memory.total,memory.used,power.limit,power.max_limit,clocks.max.graphics,pcie.link.gen.current,pcie.link.width.current --format=csv,noheader)
   "throttle reasons now: " + (& $smi --query-gpu=clocks_event_reasons.sw_power_cap,clocks_event_reasons.hw_slowdown,clocks_event_reasons.sw_thermal_slowdown --format=csv,noheader) + "  (power cap / hw slowdown / thermal)"
@@ -64,8 +70,11 @@ if ($vc) { "Primary desktop mode: $($vc.CurrentHorizontalResolution)x$($vc.Curre
 
 Section 'Windows power and security'
 $scheme = (powercfg /getactivescheme) -replace '.*\((.*)\).*','$1'
-$ov = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes').ActiveOverlayAcPowerScheme
-$mode = switch ($ov) { 'ded574b5-45a0-4f42-8737-46345c09c238' {'Best performance'} '961cc777-2547-4f9d-8174-7d86181b8a7a' {'Best power efficiency'} default {'Balanced'} }
+$pk = Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\Power\User\PowerSchemes'
+$onBattery = [bool](Get-CimInstance Win32_Battery | Where-Object { $_.BatteryStatus -eq 1 })   # 1 = discharging
+$ov = if ($onBattery) { $pk.ActiveOverlayDcPowerScheme } else { $pk.ActiveOverlayAcPowerScheme }
+$mode = if ($null -eq $ov) { 'not set (Windows treats that as Balanced)' } elseif ($ov -eq 'ded574b5-45a0-4f42-8737-46345c09c238') { 'Best performance' } elseif ($ov -eq '961cc777-2547-4f9d-8174-7d86181b8a7a') { 'Best power efficiency' } elseif ($ov -eq '00000000-0000-0000-0000-000000000000') { 'Balanced' } else { "unknown overlay $ov" }
+$mode += if ($onBattery) { ' (on battery: plug in before measuring)' } else { '' }
 "Power plan: $scheme   Power mode overlay: $mode   (Windows 11 reports 'Balanced' as the plan even when the mode is Best performance; the overlay is what matters)"
 $dg = Get-CimInstance -Namespace root\Microsoft\Windows\DeviceGuard -ClassName Win32_DeviceGuard
 $hvci = if ($dg.SecurityServicesRunning -contains 2) {'ON (running)'} else {'off'}
@@ -88,9 +97,11 @@ try {
 Section 'Storage (sim drive)'
 $installDir = (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\iRacing.com Motorsport Simulations\iRacing').InstallDir
 if (-not $installDir) { $installDir = "${env:ProgramFiles(x86)}\iRacing" }
-$drive = (Get-Item $installDir).PSDrive.Name
-$ld = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($drive):'"
-"Sim on $($drive): $([math]::Round($ld.FreeSpace/1GB,0)) GB free of $([math]::Round($ld.Size/1GB,0)) GB"
+if (Test-Path $installDir) {
+  $drive = (Get-Item $installDir).PSDrive.Name
+  $ld = Get-CimInstance Win32_LogicalDisk -Filter "DeviceID='$($drive):'"
+  "Sim on $($drive): $([math]::Round($ld.FreeSpace/1GB,0)) GB free of $([math]::Round($ld.Size/1GB,0)) GB"
+} else { "Sim install folder not found ($installDir); storage not checked." }
 $docs = [Environment]::GetFolderPath('MyDocuments'); $tel = Get-ChildItem (Join-Path $docs 'iRacing\telemetry') -File
 if ($tel) { "Telemetry folder: $($tel.Count) files, $([math]::Round(($tel | Measure-Object Length -Sum).Sum/1GB,1)) GB (auto-logging grows this; housekeeping item, not performance)" }
 
@@ -103,8 +114,16 @@ if ($SampleSeconds -gt 0) {
   "Total CPU: $((Get-CimInstance Win32_Processor | Measure-Object LoadPercentage -Average).Average)%"
 }
 
-Section 'GPU dedicated memory by process (MB)'
-$s = Get-Counter '\GPU Process Memory(*)\Dedicated Usage'
-$rows = foreach ($c in $s.CounterSamples) { if ($c.InstanceName -match 'pid_(\d+)') { $pp = Get-Process -Id $matches[1]; [pscustomobject]@{ process = $(if ($pp) { $pp.ProcessName } else { 'pid ' + $matches[1] }); MB = [math]::Round($c.CookedValue/1MB,0) } } }
-$rows | Where-Object { $_.MB -gt 50 } | Sort-Object MB -Descending | Format-Table -AutoSize | Out-String
-"Total dedicated: $([math]::Round(($rows | Measure-Object MB -Sum).Sum,0)) MB. 'dwm' is the Windows compositor: it grows with monitor count and open windows and is not reclaimable by the sim."
+Section 'GPU dedicated memory by process (MB), busiest adapter'
+# CIM class names are not localised (Get-Counter paths are); instances are per adapter LUID, so iGPU and dGPU stay apart
+$pm = @(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUProcessMemory)
+$am = @(Get-CimInstance Win32_PerfFormattedData_GPUPerformanceCounters_GPUAdapterMemory)
+$rows = foreach ($c in $pm) { if ($c.Name -match '^pid_(\d+)_luid_(0x[0-9A-Fa-f]+_0x[0-9A-Fa-f]+)') { $pp = Get-Process -Id $matches[1]; [pscustomobject]@{ adapter = $matches[2]; process = $(if ($pp) { $pp.ProcessName } else { 'pid ' + $matches[1] }); MB = [math]::Round($c.DedicatedUsage/1MB,0) } } }
+$ads = @($am | Where-Object { $_.Name -match 'luid_(0x[0-9A-Fa-f]+_0x[0-9A-Fa-f]+)' } | ForEach-Object { [pscustomobject]@{ adapter = $matches[1]; MB = [math]::Round($_.DedicatedUsage/1MB,0) } } | Sort-Object MB -Descending)
+if (-not $ads -and $rows) { $ads = @($rows | Group-Object adapter | ForEach-Object { [pscustomobject]@{ adapter = $_.Name; MB = ($_.Group | Measure-Object MB -Sum).Sum } } | Sort-Object MB -Descending) }
+if ($ads) {
+  $top = $ads[0].adapter
+  $rows | Where-Object { $_.adapter -eq $top -and $_.MB -gt 50 } | Sort-Object MB -Descending | Select-Object process, MB | Format-Table -AutoSize | Out-String
+  "Dedicated in use: " + (($ads | ForEach-Object { "adapter $($_.adapter) $($_.MB) MB" }) -join '; ') + $(if ($ads.Count -gt 1) { ' (separate adapters; do not add them)' })
+  "Per-process figures overlap (dwm also counts surfaces it shares with other windows), so use the adapter figure as the total. 'dwm' is the Windows compositor: it grows with monitor count and open windows and is not reclaimable by the sim."
+} else { "GPU memory counters not available on this PC (need Windows 10 1709+ and a WDDM 2 driver)." }

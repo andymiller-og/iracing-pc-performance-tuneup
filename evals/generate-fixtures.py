@@ -4,6 +4,11 @@ Every file here is invented: made-up rigs, made-up settings, frame times drawn f
 a GPU-bound or a memory-stalled frame. Nothing comes from a real user's PC. The CSVs carry only the PresentMon 2.x
 columns that scripts/Analyze-PresentMon.ps1 reads. Re-run with `py evals/generate-fixtures.py`; the seed is fixed,
 so the output is reproducible.
+
+eval-files/edge/ holds format edge cases for the script tests (not used by evals.json): the PresentMon 2.x console
+and short column names, a CPUStartQPCTime base in ms, an absolute time base, NA / nan / inf / empty cells, an Excel
+de-DE re-save, dwm rows mixed in, missing GPU / CPU / frame-time columns, a frame-capped run, the full PresentMon 2.6
+app header, a VR renderer ini without [Replay Graphics] / [MonitorSetup], and a folder with no renderer file.
 """
 import math
 import os
@@ -15,8 +20,9 @@ COLS = ['Application', 'ProcessID', 'PresentRuntime', 'SyncInterval', 'AllowsTea
         'GPUTemperature', 'GPUUtilization', 'GPUMemorySize', 'GPUMemorySizeUsed', 'CPUUtilization']
 
 
-def capture(path, seconds, fps_at, mode, gpu, seed, cpu_util=(18, 30)):
-    """fps_at(t) -> target fps at time t. mode: 'cpu' | 'gpu' | 'mem'. gpu: dict of sensor ranges."""
+def capture(path, seconds, fps_at, mode, gpu, seed, cpu_util=(18, 30), keep=None):
+    """fps_at(t) -> target fps at time t. mode: 'cpu' | 'gpu' | 'mem'. gpu: dict of sensor ranges.
+    keep: optional list that receives every data row (for the edge-case variants)."""
     rnd = random.Random(seed)
     t = 0.0
     sens = {'p': gpu['power'][0], 'f': gpu['mhz'][0], 'temp': gpu['temp'][0], 'u': gpu['util'][0],
@@ -48,6 +54,8 @@ def capture(path, seconds, fps_at, mode, gpu, seed, cpu_util=(18, 30)):
                    f"{sens['p']:.2f}", f"{sens['f']:.0f}", f"{sens['temp']:.0f}", f"{sens['u']:.0f}",
                    str(gpu['vram_total']), f"{sens['v'] * 1e9:.0f}", f"{sens['c']:.2f}"]
             fh.write(','.join(row) + '\n')
+            if keep is not None:
+                keep.append(row)
             t += ft / 1000.0
 
 
@@ -159,6 +167,86 @@ def main():
            'vram': (11.2, 11.5), 'vram_total': 17171480576}
     capture(os.path.join(OUT, 'eval3', 'before-1-lap.csv'), 150, race, 'gpu', gpu, seed=33)
     capture(os.path.join(OUT, 'eval3', 'after-4-laps.csv'), 540, race, 'gpu', gpu, seed=34)
+    edge_cases(gpu, over)
+
+
+# Full column list of a PresentMon 2.6 app capture (column names only), for the header-variant edge case.
+APP26 = ('Application,ProcessID,SwapChainAddress,PresentRuntime,SyncInterval,PresentFlags,AllowsTearing,PresentMode,'
+         'FrameType,TimeInSeconds,MsBetweenSimulationStart,MsBetweenPresents,MsBetweenDisplayChange,MsInPresentAPI,'
+         'MsRenderPresentLatency,MsUntilDisplayed,CPUStartTime,MsBetweenAppStart,MsCPUBusy,MsCPUWait,MsGPULatency,'
+         'MsGPUTime,MsGPUBusy,MsGPUWait,PSOCompileCount,MsPSOCompileTime,PSOCompileBusyPercent,MsAnimationError,'
+         'MsFlipDelay,AnimationTime,MsAllInputToPhotonLatency,MsClickToPhotonLatency,InstrumentedLatency,MsPCLatency,'
+         'GPUPower,GPUVoltage,GPUFrequency,GPUTemperature,GPUUtilization,3D/ComputeUtilization,MediaUtilization,'
+         'GPUMemoryPower,GPUMemoryVoltage,GPUMemoryFrequency,GPUMemoryEffectiveFrequency,GPUMemoryTemperature,'
+         'GPUMemorySize,GPUMemorySizeUsed,GPUMemoryMaxBandwidth,GPUMemoryReadBandwidth,GPUMemoryWriteBandwidth,'
+         'GPUFanSpeed[0],GPUFanSpeed[1],GPUFanSpeed[2],GPUFanSpeed[3],GPUPowerLimited,GPUTemperatureLimited,'
+         'GPUCurrentLimited,GPUVoltageLimited,GPUUtilizationLimited,GPUMemoryPowerLimited,GPUMemoryTemperatureLimited,'
+         'GPUMemoryCurrentLimited,GPUMemoryVoltageLimited,GPUMemoryUtilizationLimited,CPUUtilization,CPUPower,'
+         'CPUTemperature,CPUFrequency').split(',')
+
+
+def edge_cases(gpu, over):
+    """Format variants of one short GPU-bound capture; see the module docstring."""
+    d = os.path.join(OUT, 'edge')
+    os.makedirs(os.path.join(d, 'vronly'))
+    os.makedirs(os.path.join(d, 'emptyir'))
+    rows = []
+    capture(os.path.join(d, 'base.csv'), 60, lambda t: 84 + 4 * math.sin(t / 13.0), 'gpu', gpu, seed=55, keep=rows)
+    ix = {c: i for i, c in enumerate(COLS)}
+
+    def write(name, cols, data, sep=','):
+        with open(os.path.join(d, name), 'w', newline='') as fh:
+            fh.write(sep.join(cols) + '\n')
+            for r in data:
+                fh.write(sep.join(r) + '\n')
+
+    def renamed(ren):
+        return [ren.get(c, c) for c in COLS]
+
+    def dropped(names):
+        keep = [i for i, c in enumerate(COLS) if c not in names]
+        return [COLS[i] for i in keep], [[r[i] for i in keep] for r in rows]
+
+    write('console-cpustarttime.csv', renamed({'TimeInSeconds': 'CPUStartTime'}), rows)
+    write('shortnames.csv', renamed({'TimeInSeconds': 'CPUStartTime', 'MsBetweenPresents': 'FrameTime', 'MsCPUBusy': 'CPUBusy',
+                                     'MsCPUWait': 'CPUWait', 'MsGPUBusy': 'GPUBusy', 'MsGPUWait': 'GPUWait'}), rows)
+    ti = ix['TimeInSeconds']
+    write('qpc-ms.csv', renamed({'TimeInSeconds': 'CPUStartQPCTime'}),
+          [r[:ti] + [f'{float(r[ti]) * 1000 + 987654321.0:.4f}'] + r[ti + 1:] for r in rows])
+    write('offset.csv', COLS, [r[:ti] + [f'{float(r[ti]) + 3000:.5f}'] + r[ti + 1:] for r in rows])
+    bad = [list(r) for r in rows]
+    for r in bad[::3]:
+        r[ix['GPUPower']] = 'NA'
+    bad[100][ix['GPUPower']] = '-nan(ind)'; bad[101][ix['GPUPower']] = 'inf'; bad[102][ix['GPUFrequency']] = ''
+    bad[103][ix['MsGPUWait']] = 'nan'
+    write('na-badtokens.csv', COLS, bad)
+    write('dede-excel.csv', COLS, [[c.replace('.', ',') if i != ix['Application'] else c for i, c in enumerate(r)] for r in rows], sep=';')
+    mixed = []
+    for r in rows:
+        mixed.append(r)
+        r2 = list(r); r2[ix['Application']] = 'dwm.exe'; r2[ix['ProcessID']] = '1234'; r2[ix['MsBetweenPresents']] = '6.9444'
+        mixed.append(r2)
+    write('multiproc.csv', COLS, mixed)
+    write('nogpu.csv', *dropped({'MsGPUBusy', 'MsGPUWait', 'GPUPower', 'GPUFrequency', 'GPUTemperature', 'GPUUtilization',
+                                 'GPUMemorySize', 'GPUMemorySizeUsed'}))
+    write('nocpu.csv', *dropped({'MsCPUBusy', 'MsCPUWait'}))
+    write('noframe.csv', *dropped({'MsBetweenPresents'}))
+    rnd = random.Random(56); t = 0.0; capped = []
+    for r in rows:                     # capped at 144 fps: tiny jitter, CPU and GPU busy well below the frame time
+        ft = 1000 / 144 * (1 + rnd.gauss(0, 0.003)); gb = ft * rnd.uniform(0.55, 0.65)
+        r2 = list(r); r2[ti] = f'{t:.5f}'; r2[ix['MsBetweenPresents']] = f'{ft:.4f}'
+        r2[ix['MsCPUBusy']] = f'{ft * rnd.uniform(0.5, 0.6):.4f}'; r2[ix['MsCPUWait']] = f'{ft * 0.4:.4f}'
+        r2[ix['MsGPUBusy']] = f'{gb:.4f}'; r2[ix['MsGPUWait']] = f'{ft - gb:.4f}'
+        capped.append(r2); t += ft / 1000
+    write('capped.csv', COLS, capped)
+    full = []
+    for r in rows:                     # every column of the 2.6 app header; the ones the model lacks are NA
+        v = dict(zip(COLS, r)); v['CPUStartTime'] = v['TimeInSeconds']; v['MsBetweenDisplayChange'] = v['MsBetweenPresents']
+        v['MsBetweenAppStart'] = v['MsBetweenPresents']; v['SwapChainAddress'] = '0x2CA50780'; v['FrameType'] = 'Application'
+        full.append([v.get(c, 'NA') for c in APP26])
+    write('app26-fullheader.csv', APP26, full)
+    vr = [('Display', display(2448, 2448)), ('Graphics Options', graphics(over))]
+    ini(os.path.join(d, 'vronly', 'rendererDX11OpenXR.ini'), vr)
 
 
 if __name__ == '__main__':

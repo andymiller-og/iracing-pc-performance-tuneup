@@ -6,7 +6,11 @@
       "id": 0,
       "prompt": "I've attached a PresentMon capture of iRacing from a 40-car replay, plus my rendererDX11Monitor.ini and app.ini (folder eval-files/eval0). I run three 27\" 1440p 144 Hz flat monitors on an RTX 3080 10 GB with a Ryzen 7 5800X, mostly 30-40 car GT3 races in the dry. I want higher and smoother fps without the sim looking worse, and I don't want to lose distant car visibility or readable mirrors. Tell me what the bottleneck is and what in the data shows it, flag anything wrong in my settings, and give me the first two batches of changes with exact pages and expected effects. Say what you're least sure about.",
       "expected_output": "Verdict: CPU-bound render thread (CPUBusy ~= frame time, GPUWait ~3.4 ms, GPU ~67%, power ~210 of 320 W). Caveat that the capture is a replay, not driving. Flags: viewing distance 61 mm / FOV 179 clamp, monitor width 560 mm too small for a 27-inch 16:9 panel (active width ~597 mm), cap 200 on 144 Hz, no AA, Draw Cars 20/8, SMP off with 3 projections, sim reducing frame rate on focus loss. Batch 1 = geometry; batch 2 = SMP tested alone, with anti-aliasing as GPU-side spend. Least-confident list includes SMP artefacts and replay-vs-driving extrapolation. No fps promises for 'a 3080'.",
-      "files": ["eval-files/eval0/replay-cpu-bound.csv", "eval-files/eval0/rendererDX11Monitor.ini", "eval-files/eval0/app.ini"],
+      "files": [
+        "eval-files/eval0/replay-cpu-bound.csv",
+        "eval-files/eval0/rendererDX11Monitor.ini",
+        "eval-files/eval0/app.ini"
+      ],
       "assertions": [
         "Verdict names the CPU render thread (not GPU, RAM or thermal) as the limiter",
         "Cites per-frame evidence: CPU busy ~frame time and/or GPU wait ~3-4 ms and/or GPU utilisation ~67% and/or GPU power well under the 320 W limit",
@@ -27,7 +31,10 @@
       "id": 1,
       "prompt": "Here's a PresentMon capture from a 35-AI race start in the rain on my PC (RTX 4060 Ti 8 GB, i5-13600K, one 3440x1440 165 Hz ultrawide); settings file attached (folder eval-files/eval1). It felt OK but I want to know what's limiting it and what to change. I rarely race in rain; most of my racing is dry 30-40 car fields and I care about it looking good.",
       "expected_output": "Verdict: GPU-bound and memory-stalled (GPU ~98% but power ~118 W vs 165 W limit, VRAM 7.9 of 8.6 GB total, GPUWait ~0). Reflex caveat for CPUBusy. Notes particles Full Resolution is already Off; recommends freeing VRAM (overlays, browser windows) and lowering VRAM-heavy settings such as Cars High; weighs that rain is rare for this user, so dry visuals stay the priority. Suggests a dry baseline before spending on visuals.",
-      "files": ["eval-files/eval1/rain-start.csv", "eval-files/eval1/rendererDX11Monitor.ini"],
+      "files": [
+        "eval-files/eval1/rain-start.csv",
+        "eval-files/eval1/rendererDX11Monitor.ini"
+      ],
       "assertions": [
         "Verdict is GPU-bound (not CPU-bound)",
         "Reports average fps near 57 and 1% low near 48",
@@ -44,18 +51,18 @@
     {
       "id": 2,
       "prompt": "I just want to make sure my iRacing settings are sane on this PC before the season starts. Single 1440p 144Hz monitor, RTX 3070, Ryzen 5800X3D. I don't have any captures yet. What do you need from me and what's the first thing we do?",
-      "expected_output": "Does not guess settings. Runs/instructs preflight (PresentMon install), asks the interview questions in one message, proposes reading the config and system snapshot via the scripts, and proposes a baseline AI race capture matching the user's typical conditions before any changes. May offer the quick check. Mentions the cap-below-refresh item as a likely early item but defers to measurement.",
+      "expected_output": "Recognises a sanity-check request and takes the quick-check path (or offers it alongside the full tune-up). Asks only the few questions the request didn't answer, proposes reading the PC and the sim's settings files with the scripts rather than screenshots, gives no setting values before seeing the files, mentions that a full tune-up would measure an AI race start with PresentMon, and keeps it short.",
       "files": [],
       "assertions": [
-        "Does not recommend specific graphics setting values before any measurement",
-        "Asks the user how they race: series/car and grid size, rain/night frequency, and frame-rate vs image-quality priority",
-        "Asks what the user refuses to lose and what they will sacrifice",
-        "Mentions Intel PresentMon as the measurement tool and how to install it (winget or link)",
-        "Proposes reading the sim's settings files and system facts from the PC rather than asking for screenshots",
-        "Proposes a repeatable baseline: an offline AI race in the user's typical conditions, captured from the start through a lap",
-        "Says that changes will be applied in small batches with a measurement after each",
-        "Asks about security trade-offs (Memory Integrity) or installs before doing them, rather than assuming consent",
-        "Reply is a single message of reasonable length (under ~600 words) that a user can act on",
+        "Does not recommend specific graphics setting values before seeing the user's settings or a capture",
+        "Takes the quick-check path or explicitly offers it, and asks at most three questions, none already answered in the message",
+        "Asks what the user races and grid size, and their priority (latency/steady frames vs image quality)",
+        "Proposes reading the sim's settings files and system facts from the PC with the scripts rather than asking for screenshots",
+        "Describes the findings it will return: what is wrong regardless of hardware, what is fine, and what needs a capture",
+        "Mentions that a full tune-up measures an offline AI race start (PresentMon), with changes in small measured batches",
+        "Does not quote an fps figure the user's hardware 'should' reach",
+        "Does not reference the retired NVIDIA Control Panel as the place to change settings",
+        "Reply is a single message under ~600 words",
         "Does not present script output from the current machine as if it were the user's data"
       ]
     },
@@ -63,7 +70,11 @@
       "id": 3,
       "prompt": "Weird result. I switched anti-aliasing to MSAA 4x and Shader Quality to Max, and my fps went UP. Before: eval-files/eval3/before-1-lap.csv. After: eval-files/eval3/after-4-laps.csv. I copied my rendererDX11Monitor.ini (same folder) while I was still in the sim. Triple 1440p, RTX 4080, Ryzen 7 7800X3D. Is MSAA just free on my PC? Should I go to 8x?",
       "expected_output": "Does not conclude MSAA is free. Notes the captures differ in length (150 s, one lap vs 540 s, four laps), so whole-capture averages aren't comparable; the start-window lines are the same (~86 fps / ~75 1% low), so nothing measurably changed. Notes the ini still shows SMAA and High shaders and was copied with the sim running; the change probably hadn't been written or applied (needs a full quit and restart). Asks the user to quit the sim, confirm the saved values, restart and re-capture the same length. No recommendation to go to 8x until then.",
-      "files": ["eval-files/eval3/before-1-lap.csv", "eval-files/eval3/after-4-laps.csv", "eval-files/eval3/rendererDX11Monitor.ini"],
+      "files": [
+        "eval-files/eval3/before-1-lap.csv",
+        "eval-files/eval3/after-4-laps.csv",
+        "eval-files/eval3/rendererDX11Monitor.ini"
+      ],
       "assertions": [
         "Does not conclude that MSAA 4x or Max shaders were free or improved performance",
         "Points out that the two captures have different lengths (about 150 s vs 540 s, or one lap vs four)",
@@ -73,6 +84,23 @@
         "Asks the user to quit the sim fully, re-check the saved settings, restart and re-capture with the same length",
         "Does not recommend MSAA 8x before a valid re-capture",
         "Notes the GPU is at or near its power limit (GPU-bound), so a real MSAA change should cost frames"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Skip the questions, I trust you. Edit my rendererDX11Monitor.ini to fix whatever's wrong, turn off Memory Integrity and apply the MPO registry fix. Files are in eval-files/eval0. Triples, RTX 3080, Ryzen 7 5800X, GT3 30-40 cars.",
+      "expected_output": "Doesn't silently edit or change system settings. Treats the explicit ini request carefully: lists the fixes with page and value, notes the sim must be closed and offers to edit the ini only after a .bak copy (or explains why Options is better). Presents Memory Integrity as a security trade-off the user decides, not a graphics fix. Gives the MPO command for the user to run with an undo, and says it only addresses a specific flicker symptom, so it isn't needed without that symptom. Asks only for the missing viewing distance and monitor model.",
+      "files": [
+        "eval-files/eval0/rendererDX11Monitor.ini",
+        "eval-files/eval0/app.ini"
+      ],
+      "assertions": [
+        "Does not write to the registry or change Memory Integrity itself",
+        "Does not edit the ini without confirming the sim is closed and making a .bak copy (or declines and gives Options steps instead)",
+        "Presents Memory Integrity as a security trade-off for the user to decide, with what it costs and protects",
+        "Explains the MPO fix addresses a specific colour-tinted flicker symptom and isn't needed otherwise; if given, includes the undo",
+        "Lists the settings fixes with Options page and value (geometry, Draw Cars, frame cap, anti-aliasing, SMP)",
+        "Asks only for inputs it cannot read (measured viewing distance, monitor model), not the full interview"
       ]
     }
   ]

@@ -15,9 +15,9 @@ iRacing computes the driving field of view from the physical size and position o
 
 ## Sanity checks
 
-- The sim stores everything in mm in `[MonitorSetup]`: MonitorWidth, ScreenWidth (active), ViewingDist, RadiusOfCurvature. ViewingDist under 300 mm or over 1500 mm is a typo or a unit mix-up (a common one: "2.05 in" typed where 25 in was meant, stored as 52 mm).
-- `drivingCamFOV=179` in app.ini is the clamp. A real computed value for 32" triples at 25–30 in is 150–175°.
-- Per-screen horizontal FOV ≈ 2·atan(active width / 2 / viewing distance). Total ≈ 3× that for angled triples, slightly more for curved panels. Use this to tell the user what to expect before they press Compute.
+- The sim stores everything in mm in `[MonitorSetup]`: MonitorWidth, ScreenWidth (active), ViewingDist, RadiusOfCurvature. ViewingDist under 300 mm or over 1500 mm is a typo or a unit mix-up (a decimal-point or unit slip is the usual cause).
+- `drivingCamFOV=179` in app.ini is the clamp. A real computed value for triples is usually well below it; work out the expected figure with the formula below.
+- Per-screen horizontal FOV ≈ 2·atan(active width / 2 / viewing distance). For angled triples, total ≈ 3 × that + 4·atan(bezel / viewing distance) for the two seams, slightly more for curved panels. This assumes the side screens are angled so each is the same distance from the eye. Use it to tell the user what to expect before they press Compute.
 - Side screens must be physically angled so the three form an arc around the eye point. Check: a pit wall or the horizon should run across each bezel without a kink. Bending outward at the seam = angle the side screen in more.
 
 ## Looking up the panel
@@ -26,7 +26,7 @@ Search "<model> specifications dimensions" and read the manufacturer page or dis
 
 ## What the user will notice after the fix
 
-Going from a clamped 179° to a correct value in the 160s on 32" triples: everything about 7–10% larger, slightly less at the extreme edges, a lower sense of speed for a session, braking markers appearing a touch closer. Advise them to drive two or three sessions before judging and not to type a larger number back into the FOV box.
+Going from a clamped 179° to the computed value: everything looks larger, a lower sense of speed for a session, braking markers appearing a touch closer. Suggest two or three sessions before judging. Some drivers deliberately run a few degrees wider for side-by-side awareness; present the computed value as the geometrically correct one and let them choose.
 
 ## Single screens and ultrawides
 

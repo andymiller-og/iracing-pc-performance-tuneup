@@ -43,7 +43,25 @@ Decision: keep / revert <item> because <reason>
 
 ## Final report (`iRacing tune-up report <date>.md`)
 
-Sections, in this order. Lead with the outcome; put method after results.
+**Default: the short version.** Most drivers, and every experienced one, want this and nothing more:
+
+```
+## iRacing tune-up: <date>
+Scenario: <track, car, field size, conditions, start window seconds>
+| | Before | After |
+|---|---|---|
+| Avg / 1% low / 0.1% low (start window) | | |
+| Limiter | | |
+| GPU power / VRAM | | |
+Kept: <page > setting: from -> to, measured effect>
+Reverted: <item, why>
+Not changed: <item, why>
+Open: <anything unresolved>
+```
+
+**Team benchmark block** (when the user races with a team and wants results comparable across rigs): add one line in a fixed format so drivers can paste theirs side by side: `track | car | AI count | weather | start window s | avg | 1% | 0.1% | limiter | GPU W | VRAM GB | CPU | GPU | display`.
+
+**Full report**, on request. Sections, in this order. Lead with the outcome; put method after results.
 
 1. **Outcome** — one table: scenario × (before, after) for average, 1% low, 0.1% low; one sentence on image quality direction (same / better / traded).
 2. **What was limiting the sim** — the verdict from the baseline with the evidence (the four PresentMon numbers), and whether it changed by the end.

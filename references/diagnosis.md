@@ -1,6 +1,6 @@
 # Reading a PresentMon capture: how to decide what is limiting the sim
 
-Run `scripts/Analyze-PresentMon.ps1 -Path <csv> -PowerLimitW <nvidia-smi power.limit>` and read the output against this guide. The script computes; you decide.
+Run `scripts/Analyze-PresentMon.ps1 -Path <csv> -PowerLimitW <nvidia-smi power.limit> -TargetHz <the user's target refresh or cap>` and read the output against this guide. The script computes; you decide. It also accepts captures the user already has; check the column set it reports it detected.
 
 ## The four numbers that matter
 
@@ -31,12 +31,14 @@ With NVIDIA Reflex enabled in-game, the driver delays the CPU's frame start so t
 
 - **Present mode.** "Hardware: Independent Flip" or "Hardware Composed: Independent Flip" means frames go straight to the display and the Windows compositor is not in the path; a borderless window in this mode performs like exclusive fullscreen. "Composed: Flip" on most frames means something (an overlay, a window on top, a windowed mode without flip) forced compositor involvement. Don't theorise about compositor stutter when the mode says independent flip.
 - **GPU clock vs power.** A clock below the card's normal boost while power is pinned = power cap active. On NVIDIA confirm live with `nvidia-smi --query-gpu=clocks_event_reasons.sw_power_cap --format=csv`.
-- **Temperature.** NVIDIA cards start pulling clocks hard around 83 °C; sub-80 is not thermal throttling even if it looks warm.
+- **Temperature.** Don't judge throttling by a temperature. On NVIDIA read the throttle flags with nvidia-smi (`clocks_event_reasons.*thermal*`, see `nvidia.md`); on AMD use HWiNFO's throttling indicators.
 - **Long frames.** A single 100–900 ms frame at the start is a load or camera cut; ignore it. Repeated 20–40 ms frames through a lap are stutter worth chasing. Read the signature of each long frame: if MsGPUWait ≈ the whole frame (GPU idle) while MsCPUBusy spans it, the sim stopped submitting work, which points at a load, texture eviction under full VRAM, a reset, or UI; if MsGPUBusy spans it, the GPU itself hitched (shader compile, memory thrash). Ask the user what happened at that timestamp before theorising.
 - **Percentiles can be skewed by the pre-start.** Grid and formation seconds often run faster and at higher GPU power than the race. If the time-series buckets show a clear change at the lights, judge the limiter and the power-cap question on the racing buckets, not the whole-capture percentiles.
 - **Comparing captures of different lengths.** The start, with the field bunched, is the heaviest part of a race; later laps run faster as the field spreads out. A five-lap capture therefore has a higher average than a one-lap capture of the same settings. Compare the same window: the script's start-window line (first 120 s by default, `-StartWindowSeconds`) or the matching time-series buckets.
 - **Is the capture usable?** Check the frame count and duration first. A capture of a second or two is a mis-triggered hotkey, not a measurement (the script warns under 30 s). A file still at 0 bytes, or locked by another process, is still recording.
-- **A change that should cost frames but measured free.** Before believing it, confirm the user quit and relaunched the sim after the change and that the settings file shows the new values. Some settings only apply after a restart (the sim marks them in orange), and the settings file is written when the sim exits; until both have happened, the capture measures the old settings.
+- **A change that should cost frames but measured free.** Suspect a missed restart first (see the restart rule in SKILL.md), then confirm the settings file shows the new values.
+- **Run-to-run noise.** Two captures of the same AI start differ by a few percent in the 1% and 0.1% lows. When the user is chasing small gains, capture the baseline twice and report the spread; a change smaller than the spread is "no measurable difference", not a gain.
+- **Offline AI starts are a proxy.** The client simulates the AI cars, while an online start has network and car-update work instead; the CPU load differs (direction not established). For big online or league fields, add one hotkey capture of a real start when the user can, and say which one the plan rests on.
 - **VRAM over time.** Flat at a value well below the card's total = fine. Pinned within ~0.3 GB of total for the whole capture = full, regardless of what the sim's own budget says.
 
 ## What was captured matters more than the numbers
@@ -49,4 +51,4 @@ Before trusting a capture, run `scripts/Read-IRacingSession.ps1` (while the sim 
 
 ## Interpreting the frame-rate target
 
-With variable refresh rate working, 70–90 fps feels smooth on a 144–165 Hz panel. Without VRR, the same fps on a high-refresh panel tears (vsync off) or judders (vsync on). The 1% low is the number to protect; an average of 90 with a 1% low of 70 is a good racing state, an average of 110 with a 1% low of 40 is not.
+The target is the user's, from the interview: their floor, their refresh, their priority. Don't impose one. What holds for everyone: the 1% and 0.1% lows and frame-time consistency (the script's standard deviation and frame-to-frame delta) matter more than the average, because they are what the driver feels in a braking zone. A high average with poor lows is worse than a lower, steadier one. Competitive drivers usually want the lows near their cap or refresh; others are happy well below it with VRR covering the gap. Without VRR, any frame rate below refresh tears (vsync off) or judders (vsync on).

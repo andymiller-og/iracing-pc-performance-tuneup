@@ -1,41 +1,53 @@
 # VR specifics
 
-**Status: written from general knowledge, not from measurements with this skill.** Tell the user. The capture and analysis method applies, with the differences below.
+**Status: written from iRacing's release notes and public sources, not from measurements with this skill.** Tell the user. The capture and analysis method applies, with the differences below. Headsets, runtimes and streaming apps change monthly: research the user's exact combination before advising (see below), and say which advice came from that research.
 
 ## Find out exactly how they run VR, then research that setup
 
-VR performance in iRacing depends as much on the headset and the link as on the sim's settings, and the details change with every headset firmware and runtime release. Ask these before anything else, then **web-search the specific combination** (headset + connection + runtime + "iRacing") for current recommended settings and known issues before proposing a plan. Say which parts of your advice came from that research.
+Ask these first (skip any the user already answered), then **web-search the combination** (headset + connection + runtime + "iRacing") for current recommended settings and known issues.
 
 | Ask | Why it matters |
 |---|---|
-| Headset model and generation (Quest 2 / 3 / 3S, Pico 4, Pimax Crystal / Crystal Light / 8KX, Bigscreen Beyond, Varjo Aero, Valve Index, Reverb G2, Apple Vision Pro via a streaming app, PSVR2 on PC, others) | Native resolution, refresh options, lens sweet spot and whether eye tracking exists all change what "good" looks like and whether quad views apply. |
-| Connection: DisplayPort-native (Pimax, Beyond, Index, Varjo, G2), USB link cable (Quest Link), Wi-Fi streaming (Air Link, Virtual Desktop, Steam Link, ALVR), or a phone/standalone app | Streamed headsets add an encode/decode stage: bitrate, codec (H.264 / HEVC / AV1), router and Wi-Fi 6/6E/7 band matter as much as fps, and the GPU spends time encoding. Wired DisplayPort headsets have none of that. |
-| Runtime: Oculus/Meta OpenXR, SteamVR, Virtual Desktop's VDXR, Pimax Play, Varjo Base, WMR | Decides which renderer file the sim writes, where render resolution is set, and which "motion smoothing" exists (ASW, SteamVR motion smoothing, VD SSW, Pimax smart smoothing). |
-| Target refresh (72/80/90/120 Hz) and the current render resolution or "pixels per display pixel" | The frame budget and the pixel count are set here, not in the sim. |
-| Any extra layers: OpenXR Toolkit, OpenComposite, foveated rendering, Virtual Desktop's upscaling | They change the pipeline and can conflict with the sim's own quad-view mode. |
+| Headset model | Native resolution, refresh options, lens sweet spot, and **whether it has eye tracking** (needed for the sim's dynamic foveated rendering). Current examples: with eye tracking: Pimax Crystal / Crystal Super, Varjo Aero / XR-series, Bigscreen Beyond 2e, Quest Pro, Steam Frame (2026); without: Quest 3 / 3S, Pico 4, Bigscreen Beyond 2, Valve Index. Windows Mixed Reality was removed in Windows 11 24H2, so a Reverb G2 only works through a community SteamVR driver; search before advising one. |
+| Connection | DisplayPort-native (Pimax, Beyond, Varjo, Index), USB link cable (Quest Link), or Wi-Fi streaming (Virtual Desktop, Air Link, Steam Link, Steam Frame's own streaming). Streamed headsets add encode, network and decode stages that PresentMon cannot see; bitrate, codec, router and Wi-Fi band matter as much as fps. |
+| Runtime | Meta/Oculus OpenXR, SteamVR, Virtual Desktop's VDXR, Pimax Play, Varjo Base. Decides which renderer file the sim writes, where render resolution is set, and which motion smoothing exists (ASW, SteamVR motion smoothing, VD SSW, Pimax smart smoothing). iRacing notes that SteamVR handles eye tracking poorly on some headsets; Pimax and Varjo owners should use the vendor's OpenXR runtime. |
+| Refresh and render resolution | The frame budget (90 Hz = 11.1 ms, 120 Hz = 8.3 ms) and the pixel count are set here, not in the sim. |
+| Extra layers | **OpenXR Toolkit**: iRacing's November 2025 notice says to uninstall it (unsupported since 2024, causes performance and display problems); the sim now has its own foveated rendering. Also ask about OpenComposite and any external quad-views layer, which can conflict with the sim's own foveation. |
 
-Record all of it in the driver profile. A plan written for "VR" without this is a plan for nobody's headset.
+Record it in the driver profile. A plan written for "VR" without this is a plan for nobody's headset.
 
 ## Which file
 
-VR sessions write to `rendererDX11OpenXR.ini` (most headsets today), `rendererDX11OpenVR.ini` (SteamVR) or `rendererDX11Oculus.ini`. `scripts/Find-IRacingConfig.ps1` picks the most recently written renderer file; check it chose the VR one, or pass the path.
+VR sessions write to `rendererDX11OpenXR.ini` (most headsets), `rendererDX11OpenVR.ini` (SteamVR) or `rendererDX11Oculus.ini`. `Find-IRacingConfig.ps1` picks the most recently written renderer file; check it chose the VR one, or pass `-Path`. Since 2026 S3 the OpenXR file also has a resolution-scale percentage of its own; read it before changing resolution elsewhere.
+
+## Foveated rendering (the sim's own)
+
+- **Fixed foveated rendering (quad views)**: any OpenXR headset with an NVIDIA RTX 2000-series or newer GPU. The sim renders a sharp centre inset and a lower-resolution periphery. **Percentage Resolution to Keep** (periphery resolution) and **Inset Size** are the main GPU levers in VR; put them early in a GPU-bound plan.
+- **Dynamic (eye-tracked) foveated rendering**: added in 2025 S4 (**Allow Eye Tracking**, **Show Eye Tracking**). Needs an RTX 2000+ GPU, a headset with eye tracking, and a runtime that exposes eye gaze to OpenXR.
+- **Neither is available on AMD GPUs.** Say so to AMD VR users; it is a real gap.
+- Turn off external quad-views layers when using the sim's own foveation.
+- Steam Frame's foveated *streaming* is different: it spends encoder bitrate where you look and needs no game support. It can be combined with the sim's foveated rendering; research current guidance.
 
 ## What changes in the analysis
 
-- **The target is the headset refresh, every frame.** 90 Hz means 11.1 ms, with no VRR to hide misses. A 1% low below the refresh is felt as reprojection or judder. Averages are nearly meaningless in VR; the fraction of frames over the refresh interval is the number to report (Analyze-PresentMon prints frames >16.7 ms; for 90 Hz count frames >11.1 ms from the frame-time distribution, or re-run with a smaller BucketSeconds and read p99).
-- **Present mode** will show the runtime's compositor, not Independent Flip; that is normal in VR.
-- **Two eyes.** Resolution is set by the runtime's render scale (OpenXR Toolkit, SteamVR per-app resolution, the headset's software), not only by the sim. "Percentage Resolution to Keep" and "Inset Size Percentage" in the sim apply to foveated quad views, not to plain rendering.
+- **The target is the headset refresh, every frame.** There is no VRR to hide misses: a frame over the refresh interval is felt as reprojection or judder. Averages are nearly meaningless; run `Analyze-PresentMon.ps1 -TargetHz <refresh>` and report the share of frames over budget.
+- **Present mode** shows the runtime's compositor, not Independent Flip; that is normal in VR.
+- **Streamed headsets: PresentMon sees only the sim.** Capture with PresentMon **and** have the user read the streamer's own performance overlay (Virtual Desktop's shows game, encode, network and decode latency) at the same moment. If the sim's frame time stays inside the refresh interval while the user still sees stutter, the problem is the link (Wi-Fi channel, router placement, bitrate, codec), not the sim's settings.
+- **Captures in a headset**: use timed mode with a long enough `-Delay` to get into the car, and start the capture from the desktop before putting the headset on, so the elevation prompt doesn't appear inside the headset view.
+- **Motion smoothing**: decide with the user first whether they run locked at refresh or accept reprojection (ASW / SSW / motion smoothing at half rate). The plan then targets "frames inside the interval" for that mode.
 
 ## Sim settings that matter more in VR
 
-- **VR Mode** (Display → VR): Single Pass Stereo on NVIDIA is the VR analogue of SMP; renders both eyes in one geometry pass. Keep On. Quad view with eye tracking only on headsets that support it.
-- **Anti-Aliasing**: VR needs it badly; SMAA at minimum, MSAA 2x if GPU allows. Sharpening helps compensate for the headset's optics.
-- **Shadow Maps, Shader Quality Max, Full-res Particles, Cubemaps**: the usual GPU-heavy items hurt twice as much.
-- **Mirrors**: real cockpit mirrors are the VR way (virtual mirror in VR is a flat overlay); each costs a scene render. 1–2 is the common compromise.
-- **UI**: 3D Screen Width/Depth control the UI panel placement; cosmetic.
+- **VR mode** (Display page): Single Pass Stereo on NVIDIA renders both eyes in one geometry pass, the VR analogue of SMP. Keep it on unless the user is on the quad-views path.
+- **Anti-aliasing**: VR needs it badly; MSAA (with the resolve filter) or SMAA. Measure the cost.
+- **Shadow maps, Shader Quality Max, full-resolution particles, cubemaps**: GPU-heavy items hurt twice over.
+- **Mirrors**: real cockpit mirrors are the VR way (the virtual mirror is a flat overlay); each is a scene render. One or two is the usual compromise.
+- **Resolution scaling (FSR)** in the sim: iRacing's notes reported it misbehaving in VR in 2025; research the current state before using it.
 
 ## Runtime-side items to check
 
-- OpenXR runtime set correctly (headset vendor's or SteamVR) in the headset software.
-- Headset refresh (72/80/90/120 Hz) and render resolution set deliberately; the "auto" resolution on some runtimes picks a value far above native.
-- Motion smoothing / ASW / reprojection: decide with the user whether to run locked at refresh or allow reprojection; the batching loop must then target "frames under refresh interval", not fps.
+- The OpenXR runtime is set to the one the user intends (vendor or SteamVR).
+- Refresh and render resolution are set deliberately; "auto" resolution on some runtimes picks a value far above native.
+- For streamed headsets: PC wired to the router, a dedicated 5 or 6 GHz access point near the play space, and a bitrate and codec the GPU's encoder handles without missing frames. Research the headset's current recommendations.
+
+Sources: iRacing support "Notice Regarding OpenXR Toolkit" (article 31000177470, Nov 2025); 2025 Season 4 release notes (article 31000177148, eye-tracked foveated rendering); 2026 Season 3 release notes (OpenXR resolution scale); Windows 11 24H2 removal of Windows Mixed Reality (Microsoft, 2024).

@@ -4,7 +4,7 @@ Written for the DX11 renderer as of the 2026 Season 4 build. Descriptions are in
 
 - **Costs are directions, not numbers.** "GPU ++" means "a large GPU cost on most rigs", not a percentage. Relative costs differ between rigs and builds; the anti-aliasing methods are a known case where the ranking can flip. The user's captures decide.
 - **Page names move.** The 2025 S4 rebuild put the Driving and Replay graphics options in one panel with per-setting help text, and 2026 S1 moved several options and added an **Options search box**. `Find-IRacingConfig.ps1` prints a page for each setting; if the user can't find it there, tell them to type the setting name into the Options search. The help text the sim shows when a setting is selected is the current authority on what it does in that build.
-- **Quit and relaunch after every change.** Some settings apply only after a restart (the sim marks these in orange in Options; iRacing names the anti-aliasing options, and resolution scaling, HDR, foliage and night shadow maps are reported too), and the settings file is written when the sim exits. One rule for every change keeps captures comparable. The "restart" notes below say where iRacing documents it.
+- **Quit and relaunch after each batch of changes** before verifying or capturing (the restart rule in SKILL.md). The "restart" notes below mark where iRacing documents that a setting needs it.
 - **Driving and Replays are separate values.** Tune the driving values for racing. Replays only matter if the user cares about replays, and a replay is never a driving benchmark.
 
 The ini key is in `Documents\iRacing\rendererDX11Monitor.ini` (VR: the OpenXR/OpenVR/Oculus renderer file) unless marked app.ini. "ini only" means there is no Options control: the user changes it with the sim closed, or leaves it alone. Don't edit ini files for the user.
@@ -17,7 +17,7 @@ Guiding principle: when the capture says CPU-bound, GPU-only settings (anti-alia
 |---|---|---|---|
 | Resolution | windowedWidth/Height, fullScreenWidth/Height | GPU, VRAM | Pixels drawn. Triples = three panels wide (e.g. 7680×1440, 11 MP). See `hardware-triage.md` for pixel counts. |
 | Full Screen / Border | fullScreen, border | none | Borderless windowed is normally equivalent to exclusive fullscreen when the capture's present mode is an Independent Flip. Exclusive fullscreen on triples needs NVIDIA Surround / AMD Eyefinity. |
-| Resolution Scaling (AMD FSR) | ResolutionScaling | GPU −, VRAM − | Renders below native and upscales with AMD FSR (works on NVIDIA and AMD). Quality presets from Ultra Quality to Performance. Only active when an anti-aliasing mode is on. Restart (documented). Reduces GPU load only, never CPU load. Softens distant cars; a last resort when GPU-bound, or a rain-only trade. Reported broken in VR in 2025. FSRSharpness (ini only) adjusts the upscaler's sharpening. |
+| Resolution Scaling (AMD FSR) | ResolutionScaling | GPU −, VRAM − | Renders below native and upscales with AMD FSR (works on NVIDIA and AMD). Quality presets from Ultra Quality to Performance. Only active when an anti-aliasing mode is on. Restart (documented). Reduces GPU load only, never CPU load. Softens distant cars; a last resort when GPU-bound, or a rain-only trade. For VR see `vr.md`. FSRSharpness (ini only) adjusts the upscaler's sharpening. |
 | Brightness / Contrast / Gamma | BrightnessAdj / ContrastAdj / GammaAdj (−6…+6) | none | Tone adjustment. Leave at 0 unless the monitor is mis-calibrated. |
 | Monitor setup: number, type, width, bezel, viewing distance, curve radius, angles | `[MonitorSetup]` | none | Correctness, not fps, but wrong values draw more world than needed. FOV 179 = clamped = inputs wrong. See `monitor-geometry.md`. |
 | Render Scene Using 3 Projections | RenderViewPerMonitor | CPU +++ | One camera per screen: geometrically correct side screens on triples, but the scene is submitted once per screen. |
@@ -88,7 +88,7 @@ Guiding principle: when the capture says CPU-bound, GPU-only settings (anti-alia
 
 | Setting | ini key | Cost | What it does, when to use it |
 |---|---|---|---|
-| Dynamic LOD frame-rate threshold | LODMinFPSTarget | quality − below it | The user's minimum acceptable fps. Below it, the sim lowers model detail (cars, crew, objects, track surface, walls, fences); above it, detail climbs back. Polygon LOD only, not shaders or shadows. Set it **below the 1% low during the race start**, not the whole-race 1% low. If it sits above the fps the rig holds, the sim strips detail every lap and the user reports "it looks worse", which can be mistaken for an anti-aliasing problem. |
+| Dynamic LOD frame-rate threshold | LODMinFPSTarget | trades detail for fps below it | iRacing designed it as **the minimum frame rate the user will accept**: when fps drops below it, the sim lowers model detail (cars, crew, objects, track surface, walls, fences; polygon LOD only, not shaders or shadows) to protect the frame rate, and raises detail again as fps recovers. It is a **choice, set from the profile**: a driver who puts smoothness first sets it at their floor and lets the sim simplify the scene in a packed start; a driver who puts detail first sets it lower so it rarely acts. It is only **wrong** when it sits above the fps the rig normally runs, so the sim is simplifying the scene all the time; "it looks worse than it should" is the typical report. Detail changes mid-braking-zone bother some competitive drivers; ask. |
 | Car / World LOD behaviour | LODPctMin/Max (world), LODPctDynoMin/Max (cars), …Mirrors… variants | | UI presets that write these percentages; they scale the distance used to pick a level of detail. "Only decrease" (minimum at 100%) never raises detail above normal and is the sane default. AutoAddNoDynOnEmptyLOD (2025 S1) allows dropping further under load. |
 
 ## Particles
@@ -113,8 +113,8 @@ Guiding principle: when the capture says CPU-bound, GPU-only settings (anti-alia
 
 | Setting | ini key | Cost | What it does, when to use it |
 |---|---|---|---|
-| Limit frame rate / max fps | LimitFrameRate, DesiredFPSLimit | none | With VRR, cap 3–5 below the panel refresh so VRR stays engaged and the GPU doesn't burn power on empty-track spikes. |
-| NVIDIA Reflex | NvReflexMode | none | Enabled is right. It makes PresentMon's CPU-busy figure track GPU time (see `diagnosis.md`). |
+| Limit frame rate / max fps | LimitFrameRate, DesiredFPSLimit | none | With NVIDIA G-SYNC + driver vsync + Reflex, Reflex caps just below refresh by itself (about 138 at 144 Hz); a sim cap at or a little below that is fine, above it does nothing. Without Reflex (AMD), cap about 3% below refresh so VRR stays engaged. A cap far above refresh with VRR on is wrong. See `nvidia.md` and `amd.md`. |
+| NVIDIA Reflex | NvReflexMode | none | Enabled is right; Enabled + Boost keeps GPU clocks up when the GPU is underused. Reflex helps latency most when GPU-bound. It makes PresentMon's CPU-busy figure track GPU time (see `diagnosis.md`). |
 | Max pre-rendered frames | MaxPreRenderedFrames | latency | 1. Greyed out when Reflex is on. |
 | Vertical sync (in-game) | VerticalSync | | Off; use the driver's vsync with G-SYNC/FreeSync instead. |
 | Reduce frame rate when focus is lost | reduceFramerate_WhenFocusLost (ini only) | | 1 = the sim slows down while another program has keyboard focus. Set 0 if overlays or companion apps take focus during races. |
@@ -131,6 +131,43 @@ Guiding principle: when the capture says CPU-bound, GPU-only settings (anti-alia
 | WorldNearPlaneDistance, ZBuffer32Bits, ReduceCockpitFlicker | Depth precision and near-clip tweaks for z-fighting and cockpit flicker. |
 | LoadTexturesWhenDriving | 0 loads textures only out of the car, avoiding in-car stutter. |
 | UIScale, DriveUIFullScreen, SessionUIFullScreen, BezelProtectionPct | Interface scaling and how the UI spreads across triples. No performance effect except that the virtual mirror resolution follows the UI scale. |
+
+## Competitive profile
+
+For drivers who put latency and consistency first (most esports drivers). Present as a starting direction; measure each trade.
+
+- **Protect the lows, not the average.** Judge every batch on the start-window 1% and 0.1% lows and the frame-time spread (`Analyze-PresentMon.ps1 -TargetHz`).
+- **Latency chain:** Reflex Enabled (Boost if CPU-bound or capped), VRR + driver vsync with the Reflex cap, or uncapped without VRR if they accept tearing for the lowest latency.
+- **Visibility over beauty:** anti-aliasing that keeps distant-car silhouettes readable (MSAA with the resolve filter is the usual pick; measure against SMAA), correct FOV, mirrors readable, sharpening only if edges stay clean.
+- **No mid-corner surprises:** Dynamic LOD set so it rarely acts during racing (or at their floor, if they prefer the sim to protect frame rate), no motion blur, depth of field or heat haze.
+- **CPU headroom for starts:** fewer cars in mirrors, dynamic cubemaps 0, no shadow maps on CPU-bound rigs, SMP on NVIDIA triples.
+
+## Running alongside the sim
+
+Capture with the user's normal race-day software running, because that is the load that matters. If a result looks poor, one capture with it closed shows the cost.
+
+- **Overlays** (SimHub, Racelab, Kapps and similar): transparent windows over the sim. They use VRAM and compositor time and can knock the sim out of Independent Flip; check the present mode in the capture with them running.
+- **Telemetry and coaching apps** (Garage61, Coach Dave Delta, VRS, Crew Chief and similar): usually small CPU cost; disk logging of telemetry files adds I/O. Rarely the limit; check background CPU in `Get-SystemSnapshot.ps1`.
+- **Streaming or recording** (OBS, NVIDIA/AMD capture): the hardware encoder costs a little GPU time and VRAM; display capture costs more than game capture. If the user streams races, the baseline must be captured with the stream running.
+- **Endurance and night events:** VRAM can creep over hours, and the day-to-night transition changes the limiter (headlights, night shadow maps). If they race these, add a dusk-to-night scenario with a full multi-class field.
+- **Large league fields (50-60 cars):** the offline AI grid may not reach the league's size; check Max Cars (transmitted) and Draw Cars; mirror car count is the cheapest CPU saving at a packed start.
+
+## Myths and tweaks: check, don't apply
+
+None of these is a default recommendation. If the user asks, or has already applied one, explain it and measure it; revert if the capture shows nothing.
+
+| Tweak | What to tell the user |
+|---|---|
+| CPU affinity, Process Lasso, "pin the sim to the V-Cache CCD" | Only relevant on dual-CCD X3D CPUs, where the chipset driver and Game Mode are meant to handle it. Check those are current first; measure before keeping any manual affinity. |
+| Process priority High / Realtime | High rarely changes anything measurable; Realtime can starve input, audio and the OS. Don't. |
+| Core-parking tools | Only matter on power plans that park cores; set Best performance instead. |
+| Hardware-accelerated GPU scheduling (HAGS) | No universal answer for the sim; measure on and off if the user is curious. |
+| Game Mode | Leave it on. |
+| Disable fullscreen optimisations | Irrelevant when the capture shows Independent Flip in borderless. |
+| Timer resolution, HPET, bcdedit tweaks | No reliable benefit; risk of side effects. Don't apply. |
+| NVIDIA Ultra low-latency mode on top of Reflex | Redundant; Reflex supersedes it. |
+| Driver shader-cache size changes | Only relevant to first-run stutter; leave at driver default. |
+| Forum ini lists | Many keys are obsolete or removed (see this file). Change settings through Options; ini-only keys one at a time with a reason. |
 
 ## Windows and driver items that interact with the sim
 

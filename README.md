@@ -8,7 +8,7 @@ It is hardware-neutral: it doesn't assume what your PC should score. It places y
 
 - Windows 10/11, iRacing installed, PowerShell (5.1 is fine)
 - [Intel PresentMon](https://game.intel.com/us/stories/intel-presentmon/) for per-frame CPU/GPU timing: `winget install --id Intel.PresentMon -e`
-- An agent harness that supports the [Agent Skills](https://agentskills.io) format (`SKILL.md`): Claude Code, Claude Desktop, and others that read `SKILL.md` folders
+- An agent harness that supports the [Agent Skills](https://agentskills.io) format (`SKILL.md`): Claude Code (terminal, IDE, or the Code tab in Claude Desktop), Codex CLI, Cursor and others that read `SKILL.md` folders and can run local PowerShell
 - Optional: HWiNFO64 (`winget install --id REALiX.HWiNFO -e`)
 
 NVIDIA guidance is the most tested. AMD and VR guidance is included but comes from public sources and general knowledge, and the skill says so when it applies. The skill also expects the agent to have web search: driver versions, vendor-app menus, monitor spec sheets and VR headset specifics are looked up live rather than recalled, because they change faster than any model's training data.
@@ -25,11 +25,17 @@ Open PowerShell (Start → type "PowerShell"), paste the line, press Enter. It d
 irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1 | iex
 ```
 
+To install a specific release (recommended for teams), add `-Version`:
+
+```powershell
+& ([scriptblock]::Create((irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1))) -Version v0.3.0
+```
+
 To install for one tool only:
 
 | Tool | One line |
 |---|---|
-| Claude Code / Claude Desktop | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1))) -Harness claude` |
+| Claude Code (incl. Claude Desktop's Code tab) | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1))) -Harness claude` |
 | Codex CLI | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1))) -Harness codex` |
 | Cursor | `& ([scriptblock]::Create((irm https://raw.githubusercontent.com/andymiller-og/iracing-pc-performance-tuneup/main/install.ps1))) -Harness cursor` |
 
@@ -78,11 +84,13 @@ Point the agent at `SKILL.md`, or paste `PROMPT.md` (a single-prompt version tha
 ## What a full run looks like
 
 1. **Preflight**: finds the sim, settings folder, PresentMon, GPU vendor; prints install commands for anything missing.
-2. **Interview**: eight questions about what you race, grid sizes, rain, screens, priorities, what you won't give up, and whether security trade-offs are OK.
+2. **Interview**: a few clickable multiple-choice questions (where your agent supports them), pre-filled with what it detected on your PC, such as your screens and the apps you run, with a free-text answer on every one. They cover what you race, grid sizes, rain and night, screens, your priority (lowest latency and steadiest frames, best image, or a balance), what you won't give up, and whether security trade-offs are OK. Anything you've already said, or the scripts can read, isn't asked again.
 3. **Read the machine**: hardware, Windows power/security state, monitors, current sim settings in the sim's own words, plus anomalies (clamped FOV, cap above refresh, cars not drawn, old driver).
-4. **Baseline**: an offline AI race in your typical conditions, captured from the lights through a lap with PresentMon. The analysis says CPU-bound, GPU-bound (compute or memory) or balanced, with the numbers.
+4. **Baseline**: an offline AI race in your typical conditions, captured from the lights through a lap with PresentMon (or bring your own CapFrameX / FrameView captures). The analysis says CPU-bound, GPU-bound (compute or memory), held by the frame cap, or balanced, with the numbers.
 5. **Batches**: three or four changes at a time, each with page, setting, value, why and expected gain. You approve, apply in the sim's UI, the skill verifies the values saved, re-captures, compares, and you keep or revert.
-6. **Report**: before/after tables, what changed, what was tried and reverted, what was left alone and why, the hardware ceiling, open items.
+6. **Report**: a short before/after summary by default (full report on request), plus a one-line team benchmark format so drivers can compare rigs.
+
+Experienced drivers can skip ahead: bring captures, name a symptom (VR stutter, flicker, triple FOV), or say what you already know, and the skill starts there.
 
 ## Running the scripts by hand
 
@@ -93,8 +101,24 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Test-Prerequisites
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Get-SystemSnapshot.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Find-IRacingConfig.ps1
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Capture-PresentMon.ps1 -Label baseline-dry
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Analyze-PresentMon.ps1 -Path "$env:USERPROFILE\Documents\iRacing-tuneup\captures\<file>.csv" -PowerLimitW 200
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Analyze-PresentMon.ps1 -Path (Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'iRacing-tuneup\captures\<file>.csv') -PowerLimitW 200 -TargetHz 144
 ```
+
+## What it reads, writes and sends
+
+Everything the scripts read becomes part of the conversation with your AI agent, and so goes to whichever model provider your agent uses. Specifically:
+
+- **Reads**: CPU, GPU, RAM, motherboard and BIOS model, driver versions, monitor names (EDID), power and security settings (Memory Integrity, multi-plane overlay), the running process list with CPU and GPU-memory use, the size of the sim's telemetry folder, the sim's settings files (`rendererDX11*.ini`, `app.ini`), and, during a session, the sim's live session data (track, car count, weather, session and league IDs).
+- **Does not read**: passwords, your iRacing account, other drivers' names, or anything outside the folders above.
+- **Writes**: PresentMon captures, the tune-up log and the report, in `Documents\iRacing-tuneup\`. It does not change sim settings, the registry, drivers or Windows settings; it tells you what to change, and changes something itself only if you explicitly ask.
+- **Elevates**: only for PresentMon's capture (Windows event tracing needs admin); you'll see a UAC prompt.
+- **Web searches** include your monitor and GPU models, to look up spec sheets and current drivers.
+
+## For teams
+
+- **Pin a version.** Install a tagged release rather than the latest `main` (see the installer's `-Version` option), and review the changelog before updating.
+- **The installer replaces the skill folder.** Keep any team changes in a fork, not in the installed copy.
+- **Comparable results.** Ask drivers for the report's team benchmark line, captured on the same track, car, AI count and weather, so rigs can be compared like for like.
 
 ## Contributing
 

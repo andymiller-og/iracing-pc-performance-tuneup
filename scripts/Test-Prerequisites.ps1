@@ -19,6 +19,23 @@ Add-Row 'Windows' 'OK' "$($os.Caption) build $($os.BuildNumber)" ''
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 Add-Row 'Running as Administrator' $(if ($isAdmin) {'OK'} else {'INFO'}) $(if ($isAdmin) {'yes'} else {'no (PresentMon capture will self-elevate and ask for consent)'}) ''
 
+# Execution policy: client Windows defaults to Restricted, which blocks every .ps1 unless run with -ExecutionPolicy Bypass
+$epl = @{}; foreach ($e in Get-ExecutionPolicy -List) { $epl["$($e.Scope)"] = "$($e.ExecutionPolicy)" }
+$epList = (@('MachinePolicy','UserPolicy','Process','CurrentUser','LocalMachine') | Where-Object { $epl[$_] -and $epl[$_] -ne 'Undefined' } | ForEach-Object { "$_=$($epl[$_])" }) -join ', '
+$gpo = @('MachinePolicy','UserPolicy' | Where-Object { $epl[$_] -and $epl[$_] -ne 'Undefined' }) | Select-Object -First 1
+$plain = @('MachinePolicy','UserPolicy','CurrentUser','LocalMachine' | Where-Object { $epl[$_] -and $epl[$_] -ne 'Undefined' } | ForEach-Object { $epl[$_] }) | Select-Object -First 1
+if (-not $plain) { $plain = 'Restricted (Windows client default)' }
+$motw = $null -ne (Get-Item -LiteralPath $PSCommandPath -Stream Zone.Identifier -ErrorAction SilentlyContinue)
+$detail = "without -ExecutionPolicy Bypass: $plain$(if ($epList) { "   (scopes: $epList)" })$(if ($motw) { '; these scripts carry the downloaded-from-internet mark' })"
+if ($gpo -and $epl[$gpo] -notin 'Bypass','Unrestricted') { Add-Row 'PowerShell execution policy' 'MISSING' "$detail; set by Group Policy ($gpo), which -ExecutionPolicy Bypass cannot override" 'Ask the PC owner/IT to allow scripts, or run the steps by hand' }
+elseif ($plain -match 'Restricted|AllSigned' -or ($plain -eq 'RemoteSigned' -and $motw)) { Add-Row 'PowerShell execution policy' 'INFO' $detail 'Run every script as: powershell -NoProfile -ExecutionPolicy Bypass -File <script>  (that process only; no system change)' }
+else { Add-Row 'PowerShell execution policy' 'OK' $detail '' }
+
+# winget (missing on LTSC/Server and when App Installer is absent)
+$winget = Get-Command winget -ErrorAction SilentlyContinue
+if ($winget) { Add-Row 'winget' 'OK' "$($winget.Source)" '' }
+else { Add-Row 'winget' 'INFO' 'not found (Windows LTSC/Server, or App Installer not installed); the winget commands in the Fix column will not work' 'Install App Installer from the Microsoft Store, or download PresentMon from github.com/GameTechDev/PresentMon/releases' }
+
 # iRacing install
 $installDir = (Get-ItemProperty 'HKLM:\SOFTWARE\WOW6432Node\iRacing.com Motorsport Simulations\iRacing').InstallDir
 if (-not $installDir) { foreach ($c in @("${env:ProgramFiles(x86)}\iRacing", "$env:ProgramFiles\iRacing", "C:\iRacing")) { if (Test-Path "$c\iRacingSim64DX11.exe") { $installDir = $c } } }
@@ -63,6 +80,6 @@ if ($gpus.Name -match 'AMD|Radeon') { Add-Row 'AMD GPU detected' 'INFO' 'SMP (Si
 $sim = Get-Process iRacingSim64DX11
 Add-Row 'Sim running now' 'INFO' $(if ($sim) {"yes (PID $($sim.Id))"} else {'no'}) ''
 
-$rows | Format-Table -AutoSize -Wrap
+($rows | Format-Table -AutoSize -Wrap | Out-String -Width 220).TrimEnd()   # explicit width so redirected output keeps the Fix column
 $missing = $rows | Where-Object { $_.Status -eq 'MISSING' }
 if ($missing) { "`nMISSING items must be resolved before the baseline capture. Install commands are in the Fix column." } else { "`nAll required items present." }

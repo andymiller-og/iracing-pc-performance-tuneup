@@ -13,6 +13,7 @@ param([int]$Samples = 6)
 
 try { $mmf = [System.IO.MemoryMappedFiles.MemoryMappedFile]::OpenExisting('Local\IRSDKMemMapFileName') } catch { Write-Host "iRacing SDK shared memory not available. The sim is not running or not in a session."; exit 1 }
 $acc = $mmf.CreateViewAccessor()
+if (-not ($acc.ReadInt32(4) -band 1)) { "WARNING: the SDK header status says the sim is not connected (closed, or between sessions); the values below are stale." }
 $siLen=$acc.ReadInt32(16); $siOff=$acc.ReadInt32(20); $numVars=$acc.ReadInt32(24); $vhOff=$acc.ReadInt32(28); $numBuf=$acc.ReadInt32(32)
 $si = New-Object byte[] $siLen; [void]$acc.ReadArray($siOff,$si,0,$siLen)
 $yaml = [System.Text.Encoding]::GetEncoding(28591).GetString($si)
@@ -24,7 +25,17 @@ foreach ($l in $lines) { foreach ($k in $keys) { if ($l -match "^\s*$k\s*:") { "
 $drivers = ($lines | Where-Object { $_ -match '^\s*- CarIdx:' }).Count
 $pace = ($lines | Where-Object { $_ -match 'CarIsPaceCar: 1' }).Count
 "  Drivers listed: $drivers (pace cars: $pace)"
-$me = $lines | Where-Object { $_ -match 'CarScreenName:' } | Select-Object -First 1; if ($me) { "  Player car:" + ($me -replace '.*CarScreenName:','') }
+# The player is DriverInfo.DriverCarIdx; the first entry (CarIdx 0) is usually the pace car.
+$myIdx = $null; foreach ($l in $lines) { if ($l -match '^\s*DriverCarIdx:\s*(-?\d+)') { $myIdx = [int]$matches[1]; break } }
+$me = $null; $inDrivers = $false; $inMe = $false
+foreach ($l in $lines) {
+  if ($l -match '^\s*Drivers:\s*$') { $inDrivers = $true; continue }
+  if (-not $inDrivers) { continue }
+  if ($l -match '^\S') { break }   # next top-level section
+  if ($l -match '^\s*- CarIdx:\s*(\d+)') { $inMe = ([int]$matches[1] -eq $myIdx); continue }
+  if ($inMe -and $l -match '^\s*CarScreenName:\s*(.*)$') { $me = $matches[1].Trim(); break }
+}
+if ($me) { "  Player car: $me (CarIdx $myIdx)" } elseif ($null -ne $myIdx) { "  Player car: CarIdx $myIdx not in the driver list (spectating, or a replay of another driver)" } else { "  Player car: unknown (no DriverCarIdx in the session info)" }
 "  SimMode 'replay' means the sim was launched to watch a saved replay; 'full' is a live session."
 
 # var headers

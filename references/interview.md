@@ -1,39 +1,53 @@
 # Intake interview
 
-Ask these in **one message** (or one AskUserQuestion with several questions if the harness has it), grouped, with short options where options make sense. Eight questions at the start saves twenty later. Don't ask what the scripts can find out (CPU, GPU, RAM, driver, monitor model, current settings); run those first and confirm rather than ask.
+**Read the machine first, then ask.** Run `Get-SystemSnapshot.ps1` and `Find-IRacingConfig.ps1` before the interview so every question can offer a detected guess the user just confirms. **Never ask what the user's message already answered or what the scripts can read** (CPU, GPU, RAM, driver, current settings); confirm those in one line instead.
 
-## 1. How they race (shapes the baseline scenario)
-- What they mostly drive: series or car class, and typical grid size (8, 20, 30, 40, 60).
-- Official, league, or hosted; night racing or not.
-- Rain: never, occasionally, regularly. (Decides whether rain gets its own baseline and whether particle settings matter.)
-- Display setup: single, ultrawide, triples, VR. If triples: monitor model, and ask them to **measure eye-to-centre-screen distance** now; it is the one geometry input that cannot be looked up.
-- If VR: headset model, how it connects (DisplayPort native, USB link cable, Wi-Fi via Air Link / Virtual Desktop / Steam Link / ALVR, or another streaming app), which runtime (Meta, SteamVR, Virtual Desktop, Pimax Play, Varjo, WMR), target refresh, and any extra layers (OpenXR Toolkit, foveated rendering). These decide the frame budget, where resolution is set and what to research; see references/vr.md.
+## Use the harness's question UI
 
-## 2. What they want (shapes every trade)
-- Priority on a 1–5 scale from "max frame rate" to "best image", or in their words.
-- Things they refuse to lose. Typical answers: distant-car visibility, readable mirrors, cockpit text, shadows, their current FOV.
-- Things they are happy to sacrifice. Typical: crowds, grandstands, pit objects, trackside clutter, replay quality.
-- A frame-rate floor they consider acceptable, if they have one (many don't; offer "the 1% low stays above X").
+If the harness has a structured question tool (Claude Code's `AskUserQuestion`, or an equivalent that renders choices), use it instead of a wall of text:
 
-## 3. Constraints
-- Are they willing to change Windows security settings (Memory Integrity) for performance? Present it as a real trade-off, not a recommendation.
-- Are they willing to install Intel PresentMon (and optionally HWiNFO)? Required for measurement.
-- Can they run an offline AI race for testing (needs owned content for the track/car)? If not, which hosted/practice session can serve as a repeatable test?
-- Any known problem they want solved: stutter, tearing, flicker, long loads, crashes. (These may redirect the diagnosis.)
-- Overlays and background apps they run while racing (Racelab, SimHub, Crew Chief, Discord, streaming). Not to remove them; to account for them.
+- **At most 4 questions per call, 2–4 options each.** The tool adds a free-text "Other" answer to every question automatically; say in the question text that they can type their own answer (e.g. "or type it, like 'GT3 league racing'").
+- **Put the detected guess first** and label it, e.g. `Triples, 2560×1440 ×3 (detected)`. Use the option description to say what you saw ("3 monitors at 2560×1440 plus a 1920×1080 screen").
+- **Use multi-select** where several answers can be true (conditions, what they won't give up, what they'll sacrifice, permissions).
+- **Short headers** (a chip of 12 characters or so: "Racing", "Grid size", "Screens", "Priority").
+- Two calls cover the whole interview: round 1 "how you race", round 2 "what you want and what's OK". Ask the few free-text-only items (measured viewing distance, monitor model if the detected name is a code, a specific problem) in one short line after the second call, or as an "Other" prompt.
 
-## 4. Record the answers
+If the harness has no question tool, send one compact message in the same shape: numbered questions, lettered options with the detected guess first, and "reply like `1a 2c 3: triples + an info screen`".
 
-Write them to the tune-up log as the "Driver profile" section before doing anything else. Every later recommendation should be traceable to a line in it ("you said you never race in rain, so…").
+## Where the guesses come from
 
-## Example of a well-formed interview message
+| Question | Detect from |
+|---|---|
+| Screens | `Get-SystemSnapshot.ps1` monitors (count, names, resolution) and the sim's resolution in `Find-IRacingConfig.ps1`. Three matching panels plus one different = "triples plus an extra screen". A recently written VR renderer file = VR. |
+| VR headset and runtime | Which VR renderer file is newest, and running processes (Virtual Desktop streamer, Meta/Oculus service, SteamVR, Pimax Play, Varjo Base). A background VR service only means the software is installed; offer VR as an alternative, not the detected answer, unless the VR renderer file is the newest. |
+| Overlays and software running alongside | The process list: SimHub, Racelab, Kapps, Crew Chief, Garage61, Coach Dave Delta, VRS, Discord, OBS, NVIDIA/AMD capture. |
+| What they race (optional) | Names of the newest files in `Documents\iRacing\telemetry` and replay folders usually contain the car and track. Use only as a hint ("your recent sessions look like GT3 cars"); don't list them back. |
+| Grid size | The renderer's Draw Cars setting is a weak hint at best; ask. |
 
-> Before I touch anything I need to know how you race and what you care about, so every change can be judged against it. A few quick ones:
-> 1. What do you mostly run, and how big are the grids? (e.g. "GT3 officials, 30–40 cars")
-> 2. Rain: never / sometimes / often? Night: yes / no?
-> 3. Screens: single / ultrawide / triples / VR? If triples, the monitor model, and please measure from your eye to the centre of the middle screen in your seat. If VR, which headset, how it connects (cable, Wi-Fi via Virtual Desktop/Air Link, DisplayPort), which runtime, and what refresh you run.
-> 4. On a scale from "frame rate above all" to "make it beautiful", where are you?
-> 5. What must not get worse? (distant cars, mirrors, cockpit text, shadows…)
-> 6. What are you happy to give up? (crowds, grandstands, pit objects…)
-> 7. OK to change Windows security settings such as Memory Integrity for performance, if it turns out to matter? OK to install Intel PresentMon for measuring?
-> 8. Any specific problem you want fixed (stutter, tearing, flicker), and which overlays/apps run while you race?
+## Round 1: how they race
+
+| Header | Question | Options (detected guess first when there is one) | Multi |
+|---|---|---|---|
+| Racing | What do you mostly race? (or type it, like "GT3 league racing") | GT3 / GT4 sports cars · Open-wheel · Oval / NASCAR · Multi-class or endurance | no |
+| Grid size | How big are your grids, usually? Official or league? | Up to 20 · 20–35 · 35–50 · 50–60+ (league fields) | no |
+| Screens | Your screens, as I read them. Right? (or type it, like "triples plus a fourth monitor for info") | the detected set-up first, then the likely alternatives (single, ultrawide, triples, VR) | no |
+| Conditions | Do you race any of these regularly? | Rain · Night or day-to-night · Endurance (2 h+) · None, mostly dry daytime | yes |
+
+## Round 2: what they want, and what's OK
+
+| Header | Question | Options | Multi |
+|---|---|---|---|
+| Priority | What matters most when you race? | Lowest latency and steadiest frames · Best-looking image · A balance of both | no |
+| Keep | What must not get worse? | Distant-car visibility · Readable mirrors · Cockpit and dash text · Shadows and lighting | yes |
+| Give up | What are you happy to give up? | Crowds and grandstands · Trackside clutter and objects · Pit-lane objects · Replay quality | yes |
+| OK to | Which of these are OK? | Install Intel PresentMon to measure · Consider Windows security trade-offs (Memory Integrity) · Run an offline AI race to test · I already have captures (CapFrameX, FrameView, fpsVR) | yes |
+
+Then one short line for what only the user can give: for triples, "measure from your eye to the centre of the middle screen in your seat"; the retail monitor model if the detected name is a code; "I can see SimHub and Discord running; anything else during races, like streaming?"; and "any specific problem to fix?".
+
+For VR, replace "Screens" in round 1 with the headset (detected guess first), and add a third call or a short line for connection, runtime and refresh (see `vr.md`).
+
+For the **quick check**, ask only round 1's "Racing", "Screens" and round 2's "Priority", in one call, skipping any the message already answered.
+
+## Record the answers
+
+Write them to the tune-up log as the "Driver profile" before doing anything else, including what was detected and confirmed. Every later recommendation should be traceable to a line in it ("you said you never race in rain, so…").
